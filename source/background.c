@@ -115,6 +115,27 @@
 #include "background.h"
 #include <gsl/gsl_integration.h>
 
+static double background_gedf_ca2_from_params(
+                                              double s_a_gedf,
+                                              double wi_gedf,
+                                              double wf_gedf,
+                                              double a,
+                                              double w_gedf,
+                                              double dw_over_da_gedf
+                                              ) {
+
+  double one_plus_w = 1. + w_gedf;
+  double B = s_a_gedf * (1. + wf_gedf);
+
+  if (fabs(one_plus_w) > 1.e-10) {
+    return w_gedf - a * dw_over_da_gedf / 3. / one_plus_w;
+  }
+  if (fabs(1. + wi_gedf) < 1.e-10) {
+    return wi_gedf - B / 3.;
+  }
+  return w_gedf;
+}
+
 static double background_gedf_ca2(
                                   struct background * pba,
                                   double a,
@@ -122,16 +143,31 @@ static double background_gedf_ca2(
                                   double dw_over_da_gedf
                                   ) {
 
-  double one_plus_w = 1. + w_gedf;
-  double B = pba->s_a_gedf * (1. + pba->wf_edf);
+  return background_gedf_ca2_from_params(
+                                          pba->s_a_gedf,
+                                          pba->wi_edf,
+                                          pba->wf_edf,
+                                          a,
+                                          w_gedf,
+                                          dw_over_da_gedf
+                                          );
+}
 
-  if (fabs(one_plus_w) > 1.e-10) {
-    return w_gedf - a * dw_over_da_gedf / 3. / one_plus_w;
-  }
-  if (fabs(1. + pba->wi_edf) < 1.e-10) {
-    return pba->wi_edf - B / 3.;
-  }
-  return w_gedf;
+static double background_gedf_2_ca2(
+                                    struct background * pba,
+                                    double a,
+                                    double w_gedf,
+                                    double dw_over_da_gedf
+                                    ) {
+
+  return background_gedf_ca2_from_params(
+                                          pba->s_a_gedf_2,
+                                          pba->wi_gedf_2,
+                                          pba->wf_gedf_2,
+                                          a,
+                                          w_gedf,
+                                          dw_over_da_gedf
+                                          );
 }
 
 /**
@@ -421,6 +457,7 @@ int background_functions(
   double w_edf, dw_over_da_edf, integral_edf;
   double w_dr_dm, dw_over_da_drdm, integral_drdm;
   double w_gedf, dw_over_da_gedf, integral_gedf;
+  double w_gedf_2, dw_over_da_gedf_2, integral_gedf_2;
   double z_from_a, ac_from_zc;
   /* scalar field quantities */
   double phi, phi_prime;
@@ -657,6 +694,19 @@ int background_functions(
     // }
     rho_r += 3.*w_gedf*pvecback[pba->index_bg_rho_gedf];
     rho_m += pvecback[pba->index_bg_rho_gedf] - 3.*w_gedf*pvecback[pba->index_bg_rho_gedf];
+  }
+
+  if (pba->has_gedf_2 == _TRUE_) {
+    pvecback[pba->index_bg_rho_gedf_2] = pvecback_B[pba->index_bi_rho_gedf_2];
+
+    class_call(background_w_gedf_2(pba,a,&w_gedf_2,&dw_over_da_gedf_2,&integral_gedf_2), pba->error_message, pba->error_message);
+    pvecback[pba->index_bg_w_gedf_2] = w_gedf_2;
+
+    rho_tot += pvecback[pba->index_bg_rho_gedf_2];
+    p_tot += w_gedf_2 * pvecback[pba->index_bg_rho_gedf_2];
+    dp_dloga += (a*dw_over_da_gedf_2-3*(1+w_gedf_2)*w_gedf_2)*pvecback[pba->index_bg_rho_gedf_2];
+    rho_r += 3.*w_gedf_2*pvecback[pba->index_bg_rho_gedf_2];
+    rho_m += pvecback[pba->index_bg_rho_gedf_2] - 3.*w_gedf_2*pvecback[pba->index_bg_rho_gedf_2];
   }
 
   /* relativistic neutrinos (and all relativistic relics) */
@@ -1023,7 +1073,6 @@ int background_w_gedf(
 
   *w_edf = A * f + wi;
   *dw_over_da_edf = A * B * f * (1. - f) / a;
-  // *dw_over_da_edf = -1.* A * B * pow(f,2) * (1. - 1./f) / a;
 
   logacB = B * log(pba->ac_gedf);
   logaB = B * log(a);
@@ -1038,8 +1087,63 @@ int background_w_gedf(
 
   *integral_edf = 3. * (1. + wi) * log(1./a) + (3. * A / B) * (log_1_plus_acB - log_aB_plus_acB);
 
+  return _SUCCESS_;
+}
+
+int background_w_gedf_2(
+                     struct background * pba,
+                     double a,
+                     double * w_edf,
+                     double * dw_over_da_edf,
+                     double * integral_edf
+                     ){
+  double wi, wf, A, B;
+  double y, f, exp_y;
+  double logacB, logaB;
+  double M, log_1_plus_acB, log_aB_plus_acB;
+
+  wi = pba->wi_gedf_2;
+  wf = pba->wf_gedf_2;
+  A = - wi + wf;
+  B = pba->s_a_gedf_2 * (1. + wf);
+
+  /* w(a) = (-wi + wf)/(1 + (ac/a)^(s_a(1+wf))) + wi */
+  if (fabs(B) < 1e-14) {
+    *w_edf = 0.5 * A + wi;
+    *dw_over_da_edf = 0.;
+    *integral_edf = 3. * (1. + *w_edf) * log(1./a);
     return _SUCCESS_;
   }
+
+  y = B * (log(pba->ac_gedf_2) - log(a));
+  if (y >= 0.) {
+    exp_y = exp(-y);
+    f = exp_y/(1. + exp_y);
+  }
+  else {
+    exp_y = exp(y);
+    f = 1./(1. + exp_y);
+  }
+
+  *w_edf = A * f + wi;
+  *dw_over_da_edf = A * B * f * (1. - f) / a;
+  // *dw_over_da_edf = -1.* A * B * pow(f,2) * (1. - 1./f) / a;
+
+  logacB = B * log(pba->ac_gedf_2);
+  logaB = B * log(a);
+  if (logacB >= 0.) {
+    log_1_plus_acB = logacB + log1p(exp(-logacB));
+  }
+  else {
+    log_1_plus_acB = log1p(exp(logacB));
+  }
+  M = (logaB > logacB) ? logaB : logacB;
+  log_aB_plus_acB = M + log(exp(logaB - M) + exp(logacB - M));
+
+  *integral_edf = 3. * (1. + wi) * log(1./a) + (3. * A / B) * (log_1_plus_acB - log_aB_plus_acB);
+
+  return _SUCCESS_;
+}
 
 /**
  * Single place where the variation of fundamental constants is
@@ -1276,6 +1380,7 @@ int background_indices(
   pba->has_fld = _FALSE_;
   pba->has_edf = _FALSE_; /* by yehuang */
   pba->has_gedf = _FALSE_; /* drdm by yehuang */
+  pba->has_gedf_2 = _FALSE_;
   pba->has_ur = _FALSE_;
   pba->has_idr = _FALSE_;
   pba->has_curvature = _FALSE_;
@@ -1313,6 +1418,9 @@ int background_indices(
   /* by yehuang */
   if (pba->rho_gedf != 0. )
     pba->has_gedf = _TRUE_;
+
+  if (pba->rho_gedf_2 != 0. )
+    pba->has_gedf_2 = _TRUE_;
 
   if (pba->Omega0_ur != 0.)
     pba->has_ur = _TRUE_;
@@ -1389,6 +1497,8 @@ int background_indices(
   /* - index for drdm by yehuang */
   class_define_index(pba->index_bg_rho_gedf,pba->has_gedf,index_bg,1);
   class_define_index(pba->index_bg_w_gedf,pba->has_gedf,index_bg,1);
+  class_define_index(pba->index_bg_rho_gedf_2,pba->has_gedf_2,index_bg,1);
+  class_define_index(pba->index_bg_w_gedf_2,pba->has_gedf_2,index_bg,1);
 
   /* - index for ultra-relativistic neutrinos/species */
   class_define_index(pba->index_bg_rho_ur,pba->has_ur,index_bg,1);
@@ -1482,6 +1592,7 @@ int background_indices(
 
   /* -> energy density in drdm by yehuang */
   class_define_index(pba->index_bi_rho_gedf,pba->has_gedf,index_bi,1);
+  class_define_index(pba->index_bi_rho_gedf_2,pba->has_gedf_2,index_bi,1);
 
   /* -> scalar field and its derivative wrt conformal time (Zuma) */
   class_define_index(pba->index_bi_phi_scf,pba->has_scf,index_bi,1);
@@ -2488,6 +2599,7 @@ int background_initial_conditions(
   double rho_edf_today; /* by yehuang */
   double w_edf,dw_over_da_edf,integral_edf;
   double w_gedf,dw_over_da_gedf,integral_gedf;
+  double w_gedf_2,dw_over_da_gedf_2,integral_gedf_2;
   double w_gedf_ac,dw_over_da_gedf_ac,integral_gedf_ac;
   double rho_edf_zc;
   double activation, activation_zc;
@@ -2659,6 +2771,14 @@ int background_initial_conditions(
     pvecback_integration[pba->index_bi_rho_gedf] = pba->rho_gedf * exp(integral_gedf) / exp(integral_gedf_ac);
   }
 
+  if (pba->has_gedf_2 == _TRUE_) {
+    class_call(background_w_gedf_2(pba,a,&w_gedf_2,&dw_over_da_gedf_2,&integral_gedf_2), pba->error_message, pba->error_message);
+
+    class_call(background_w_gedf_2(pba,pba->ac_gedf_2,&w_gedf_ac,&dw_over_da_gedf_ac,&integral_gedf_ac), pba->error_message, pba->error_message);
+
+    pvecback_integration[pba->index_bi_rho_gedf_2] = pba->rho_gedf_2 * exp(integral_gedf_2) / exp(integral_gedf_ac);
+  }
+
   /** - Fix initial value of \f$ \phi, \phi' \f$
    * set directly in the radiation attractor => fixes the units in terms of rho_ur
    *
@@ -2765,9 +2885,12 @@ int background_find_equality(
   double alpha, mu;
   double Omega_r, Omega_m;
   double w_gedf,dw_over_da_gedf,integral_gedf,w_prime_gedf;
+  double w_gedf_2,dw_over_da_gedf_2,integral_gedf_2;
   double a_i, a_f;
   double a_prime_over_a;
-  double zc_drdm, f_gedf_zc;
+  double zc_drdm, f_gedf_zc, f_gedf_2_zc;
+  double rho_gedf_ratio_zc = 0.;
+  double rho_gedf_2_ratio_zc = 0.;
 
   /* first bracket the right tau value between two consecutive indices in the table */
 
@@ -2957,6 +3080,7 @@ int background_find_equality(
 
     rho_tot_zc = pvecback[pba->index_bg_rho_tot];
     f_gedf_zc = pvecback[pba->index_bg_rho_gedf]/rho_tot_zc;
+    rho_gedf_ratio_zc = pba->rho_gedf/rho_tot_zc;
     pba->f_gedf = f_gedf_zc;
 
     if(pba->ac_gedf<pba->a_eq){
@@ -3004,6 +3128,56 @@ int background_find_equality(
     
   }
 
+  if (pba->has_gedf_2 == _TRUE_){
+    a_f = 1.;
+    a_i = 1./(1.e9 + 1.);
+
+    class_call(background_at_z(
+                pba,
+                0.,
+                normal_info,
+                inter_normal,
+                &last_index,
+                pvecback
+                ),
+               pba->error_message,
+               pba->error_message);
+
+    class_call(background_w_gedf_2(pba,a_f,&w_gedf_2,&dw_over_da_gedf_2,&integral_gedf_2), pba->error_message, pba->error_message);
+    pba->ca2_f_gedf_2 = background_gedf_2_ca2(pba,a_f,w_gedf_2,dw_over_da_gedf_2);
+
+    class_call(background_at_z(
+                pba,
+                1.e9,
+                normal_info,
+                inter_normal,
+                &last_index,
+                pvecback
+                ),
+               pba->error_message,
+               pba->error_message);
+
+    class_call(background_w_gedf_2(pba,a_i,&w_gedf_2,&dw_over_da_gedf_2,&integral_gedf_2), pba->error_message, pba->error_message);
+    pba->ca2_i_gedf_2 = background_gedf_2_ca2(pba,a_i,w_gedf_2,dw_over_da_gedf_2);
+
+    zc_drdm = 1./pba->ac_gedf_2 - 1.;
+    class_call(background_at_z(
+                pba,
+                zc_drdm,
+                normal_info,
+                inter_normal,
+                &last_index,
+                pvecback
+                ),
+               pba->error_message,
+               pba->error_message);
+
+    rho_tot_zc = pvecback[pba->index_bg_rho_tot];
+    f_gedf_2_zc = pvecback[pba->index_bg_rho_gedf_2]/rho_tot_zc;
+    rho_gedf_2_ratio_zc = pba->rho_gedf_2/rho_tot_zc;
+    pba->f_gedf_2 = f_gedf_2_zc;
+  }
+
   if (pba->background_verbose > 0 && pba->has_gedf == _TRUE_) {
     printf(" -> f_EDF = %-15g \n", f_edf_zc);
     printf(" -> Omega_EDF = %-15g \n", pba->Omega0_edf);
@@ -3012,7 +3186,14 @@ int background_find_equality(
     printf(" -> ca2_i_gedf = %-15g \n", pba->ca2_i_gedf);
     printf(" -> ca2_f_gedf = %-15g \n", pba->ca2_f_gedf);
     printf(" -> f_GEDF(ac_gedf) = %-15g \n", f_gedf_zc);
-    printf(" -> rho_gedf/rho_tot(ac_gedf) = %-15g \n", pba->rho_gedf/rho_tot_zc);
+    printf(" -> rho_gedf/rho_tot(ac_gedf) = %-15g \n", rho_gedf_ratio_zc);
+  }
+
+  if (pba->background_verbose > 0 && pba->has_gedf_2 == _TRUE_) {
+    printf(" -> ca2_i_gedf_2 = %-15g \n", pba->ca2_i_gedf_2);
+    printf(" -> ca2_f_gedf_2 = %-15g \n", pba->ca2_f_gedf_2);
+    printf(" -> f_GEDF_2(ac_gedf_2) = %-15g \n", f_gedf_2_zc);
+    printf(" -> rho_gedf_2/rho_tot(ac_gedf_2) = %-15g \n", rho_gedf_2_ratio_zc);
   }
 
 
@@ -3068,6 +3249,8 @@ int background_output_titles(
   class_store_columntitle(titles,"(.)w_edf",pba->has_edf);
   class_store_columntitle(titles,"(.)rho_gedf",pba->has_gedf);
   class_store_columntitle(titles,"(.)w_gedf",pba->has_gedf);
+  class_store_columntitle(titles,"(.)rho_gedf_2",pba->has_gedf_2);
+  class_store_columntitle(titles,"(.)w_gedf_2",pba->has_gedf_2);
   class_store_columntitle(titles,"(.)rho_ur",pba->has_ur);
   class_store_columntitle(titles,"(.)rho_idr",pba->has_idr);
   class_store_columntitle(titles,"(.)rho_crit",_TRUE_);
@@ -3145,6 +3328,8 @@ int background_output_data(
     class_store_double(dataptr,pvecback[pba->index_bg_w_edf],pba->has_edf,storeidx);
     class_store_double(dataptr,pvecback[pba->index_bg_rho_gedf],pba->has_gedf,storeidx); /** drdm by yehuang*/
     class_store_double(dataptr,pvecback[pba->index_bg_w_gedf],pba->has_gedf,storeidx);
+    class_store_double(dataptr,pvecback[pba->index_bg_rho_gedf_2],pba->has_gedf_2,storeidx);
+    class_store_double(dataptr,pvecback[pba->index_bg_w_gedf_2],pba->has_gedf_2,storeidx);
     class_store_double(dataptr,pvecback[pba->index_bg_rho_ur],pba->has_ur,storeidx);
     class_store_double(dataptr,pvecback[pba->index_bg_rho_idr],pba->has_idr,storeidx);
     class_store_double(dataptr,pvecback[pba->index_bg_rho_crit],_TRUE_,storeidx);
@@ -3289,6 +3474,10 @@ int background_derivs(
     dy[pba->index_bi_rho_gedf] = -3.*(1.+pvecback[pba->index_bg_w_gedf])*y[pba->index_bi_rho_gedf];
     // dy[pba->index_bi_rho_drdm] = 0.;
     // printf(" rho_drdm = %-15g , w_drdm = %-15g, \n",pvecback[pba->index_bg_rho_drdm], pvecback[pba->index_bg_w_drdm]);
+  }
+
+  if (pba->has_gedf_2 == _TRUE_){
+    dy[pba->index_bi_rho_gedf_2] = -3.*(1.+pvecback[pba->index_bg_w_gedf_2])*y[pba->index_bi_rho_gedf_2];
   }
 
   if (pba->has_scf == _TRUE_) {

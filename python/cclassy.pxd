@@ -101,11 +101,15 @@ cdef extern from "class.h":
         double rho_edf
         double f_edf
         double f_gedf
+        double f_gedf_2
         double cs2_edf
         double Theta_i_edf
         double rho_gedf
         double ac_gedf
         double s_a_gedf
+        double rho_gedf_2
+        double ac_gedf_2
+        double s_a_gedf_2
         double Omega0_ur
         double Omega0_dcdmdr
         double Omega0_dr

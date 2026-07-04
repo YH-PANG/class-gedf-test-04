@@ -128,6 +128,13 @@ struct background
   double s_a_gedf;
   double ca2_i_gedf;
   double ca2_f_gedf;
+  double rho_gedf_2;
+  double ac_gedf_2;
+  double s_a_gedf_2;
+  double wi_gedf_2;
+  double wf_gedf_2;
+  double ca2_i_gedf_2;
+  double ca2_f_gedf_2;
   double Omega_EDE;        /**< \f$ wa_{DE} \f$: Early Dark Energy density parameter */
   double * scf_parameters; /**< list of parameters describing the scalar field potential */
   short attractor_ic_scf;  /**< whether the scalar field has attractor initial conditions */
@@ -164,6 +171,7 @@ struct background
   double tau_eq;    /**< conformal time at radiation/matter equality [Mpc] */
   double f_edf;
   double f_gedf;
+  double f_gedf_2;
 
   //@}
 
@@ -191,6 +199,8 @@ struct background
   int index_bg_w_edf;         /**< EDF equation of state by yehuang */
   int index_bg_rho_gedf;      /**< GEDF density by yehuang*/
   int index_bg_w_gedf;        /**< GEDF equation of state by yehuang*/
+  int index_bg_rho_gedf_2;    /**< second GEDF density */
+  int index_bg_w_gedf_2;      /**< second GEDF equation of state */
   int index_bg_rho_idr;       /**< density of interacting dark radiation */
   int index_bg_rho_ur;        /**< relativistic neutrinos/relics density */
   int index_bg_rho_dcdm;      /**< dcdm density */
@@ -281,6 +291,7 @@ struct background
   int index_bi_rho_fld; /**< {B} fluid density */
   int index_bi_rho_edf; /**< {B} edf density */
   int index_bi_rho_gedf;/**< {B} gedf density */
+  int index_bi_rho_gedf_2;/**< {B} second gedf density */
   int index_bi_phi_scf;       /**< {B} scalar field value */
   int index_bi_phi_prime_scf; /**< {B} scalar field derivative wrt conformal time */
 
@@ -315,6 +326,7 @@ struct background
   short has_fld;       /**< presence of fluid with constant w and cs2? */
   short has_edf;       /**< presence of early dark fluid? by yehuang*/
   short has_gedf;      /**< presence of gedf by yehuang*/
+  short has_gedf_2;    /**< presence of second gedf */
   short has_ur;        /**< presence of ultra-relativistic neutrinos/relics? */
   short has_idr;       /**< presence of interacting dark radiation? */
   short has_curvature; /**< presence of global spatial curvature? */
@@ -457,6 +469,14 @@ extern "C" {
 
   /* Generalized EDF */
   int background_w_gedf(
+                     struct background * pba,
+                     double a,
+                     double * w_gedf,
+                     double * dw_over_da_gedf,
+                     double * integral_gedf
+                     );
+
+  int background_w_gedf_2(
                      struct background * pba,
                      double a,
                      double * w_gedf,

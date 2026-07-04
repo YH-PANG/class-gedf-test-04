@@ -52,6 +52,31 @@ static void perturbations_gedf_sound_speeds(
   }
 }
 
+static void perturbations_gedf_2_sound_speeds(
+                                              struct background * pba,
+                                              double a,
+                                              double w_gedf,
+                                              double dw_over_da_gedf,
+                                              double * ca2_gedf,
+                                              double * cs2_gedf
+                                              ) {
+
+  double one_plus_w = 1. + w_gedf;
+  double B = pba->s_a_gedf_2 * (1. + pba->wf_gedf_2);
+
+  *cs2_gedf = (a <= pba->ac_gedf_2) ? 1. : pba->wf_gedf_2;
+
+  if (fabs(one_plus_w) > 1.e-10) {
+    *ca2_gedf = w_gedf - a * dw_over_da_gedf / 3. / one_plus_w;
+  }
+  else if (fabs(1. + pba->wi_gedf_2) < 1.e-10) {
+    *ca2_gedf = pba->wi_gedf_2 - B / 3.;
+  }
+  else {
+    *ca2_gedf = w_gedf;
+  }
+}
+
 
 /**
  * Source function \f$ S^{X} (k, \tau) \f$ at a given conformal time tau.
@@ -593,6 +618,7 @@ int perturbations_output_titles(
       /* by yehuang*/
       class_store_columntitle(titles,"d_edf",pba->has_edf);
       class_store_columntitle(titles,"d_gedf",pba->has_gedf);
+      class_store_columntitle(titles,"d_gedf_2",pba->has_gedf_2);
       class_store_columntitle(titles,"d_ur",pba->has_ur);
       class_store_columntitle(titles,"d_idr",pba->has_idr);
       if (pba->has_ncdm == _TRUE_) {
@@ -625,6 +651,7 @@ int perturbations_output_titles(
       /** by yehuang*/
       class_store_columntitle(titles,"t_edf",pba->has_edf);
       class_store_columntitle(titles,"t_gedf",pba->has_gedf);
+      class_store_columntitle(titles,"t_gedf_2",pba->has_gedf_2);
       class_store_columntitle(titles,"t_ur",pba->has_ur);
       class_store_columntitle(titles,"t_idr",pba->has_idr);
       if (pba->has_ncdm == _TRUE_) {
@@ -1242,6 +1269,7 @@ int perturbations_indices(
   /* EDF by yehuang */
   ppt->has_source_delta_edf = _FALSE_;
   ppt->has_source_delta_gedf = _FALSE_; /* has_gedf */
+  ppt->has_source_delta_gedf_2 = _FALSE_;
   ppt->has_source_delta_scf = _FALSE_;
   ppt->has_source_delta_dr = _FALSE_;
   ppt->has_source_delta_ur = _FALSE_;
@@ -1261,6 +1289,7 @@ int perturbations_indices(
   // ppt->has_source_theta_edf = _FALSE_;
   ppt->has_source_u_edf = _FALSE_;
   ppt->has_source_u_gedf = _FALSE_; /* has_gedf */
+  ppt->has_source_u_gedf_2 = _FALSE_;
   ppt->has_source_theta_scf = _FALSE_;
   ppt->has_source_theta_dr = _FALSE_;
   ppt->has_source_theta_ur = _FALSE_;
@@ -1358,6 +1387,8 @@ int perturbations_indices(
           ppt->has_source_delta_edf = _TRUE_;
         if (pba->has_gedf == _TRUE_)
           ppt->has_source_delta_gedf = _TRUE_;
+        if (pba->has_gedf_2 == _TRUE_)
+          ppt->has_source_delta_gedf_2 = _TRUE_;
         if (pba->has_scf == _TRUE_)
           ppt->has_source_delta_scf = _TRUE_;
         if (pba->has_ur == _TRUE_)
@@ -1395,6 +1426,8 @@ int perturbations_indices(
         if (pba->has_gedf == _TRUE_)
           // ppt->has_source_theta_gedf = _TRUE_;
           ppt->has_source_u_gedf = _TRUE_;
+        if (pba->has_gedf_2 == _TRUE_)
+          ppt->has_source_u_gedf_2 = _TRUE_;
         if (pba->has_scf == _TRUE_)
           ppt->has_source_theta_scf = _TRUE_;
         if (pba->has_ur == _TRUE_)
@@ -1472,6 +1505,7 @@ int perturbations_indices(
       class_define_index(ppt->index_tp_delta_fld,  ppt->has_source_delta_fld, index_type,1);
       class_define_index(ppt->index_tp_delta_edf,  ppt->has_source_delta_edf, index_type,1);
       class_define_index(ppt->index_tp_delta_gedf,  ppt->has_source_delta_gedf, index_type,1); /* has_gedf */
+      class_define_index(ppt->index_tp_delta_gedf_2,ppt->has_source_delta_gedf_2,index_type,1);
       class_define_index(ppt->index_tp_delta_scf,  ppt->has_source_delta_scf, index_type,1);
       class_define_index(ppt->index_tp_delta_dr,   ppt->has_source_delta_dr,  index_type,1);
       class_define_index(ppt->index_tp_delta_ur,   ppt->has_source_delta_ur,  index_type,1);
@@ -1489,6 +1523,7 @@ int perturbations_indices(
       // class_define_index(ppt->index_tp_theta_edf,  ppt->has_source_theta_edf, index_type,1);
       class_define_index(ppt->index_tp_u_edf,  ppt->has_source_u_edf, index_type,1);
       class_define_index(ppt->index_tp_u_gedf,  ppt->has_source_u_gedf, index_type,1); /* has_gedf*/
+      class_define_index(ppt->index_tp_u_gedf_2,ppt->has_source_u_gedf_2,index_type,1);
       class_define_index(ppt->index_tp_theta_scf,  ppt->has_source_theta_scf, index_type,1);
       class_define_index(ppt->index_tp_theta_dr,   ppt->has_source_theta_dr,  index_type,1);
       class_define_index(ppt->index_tp_theta_ur,   ppt->has_source_theta_ur,  index_type,1);
@@ -3452,6 +3487,14 @@ int perturbations_prepare_k_output(struct background * pba,
       class_store_columntitle(ppt->scalar_titles, "cs2_gedf_output", pba->has_gedf);
       class_store_columntitle(ppt->scalar_titles, "u_gedf", pba->has_gedf);
       class_store_columntitle(ppt->scalar_titles, "T_h_gedf", pba->has_gedf);
+      class_store_columntitle(ppt->scalar_titles, "delta_rho_gedf_2", pba->has_gedf_2);
+      class_store_columntitle(ppt->scalar_titles, "rho_plus_p_theta_gedf_2", pba->has_gedf_2);
+      class_store_columntitle(ppt->scalar_titles, "delta_p_gedf_2", pba->has_gedf_2);
+      class_store_columntitle(ppt->scalar_titles, "delta_gedf_2", pba->has_gedf_2);
+      class_store_columntitle(ppt->scalar_titles, "ca2_gedf_2_output", pba->has_gedf_2);
+      class_store_columntitle(ppt->scalar_titles, "cs2_gedf_2_output", pba->has_gedf_2);
+      class_store_columntitle(ppt->scalar_titles, "u_gedf_2", pba->has_gedf_2);
+      class_store_columntitle(ppt->scalar_titles, "T_h_gedf_2", pba->has_gedf_2);
 
       ppt->number_of_scalar_titles =
         get_number_of_titles(ppt->scalar_titles);
@@ -4046,6 +4089,8 @@ int perturbations_vector_init(
     /* GEDF */
     class_define_index(ppv->index_pt_delta_gedf,pba->has_gedf,index_pt,1); 
     class_define_index(ppv->index_pt_u_gedf,pba->has_gedf,index_pt,1);
+    class_define_index(ppv->index_pt_delta_gedf_2,pba->has_gedf_2,index_pt,1);
+    class_define_index(ppv->index_pt_u_gedf_2,pba->has_gedf_2,index_pt,1);
 
     /* scalar field */
 
@@ -4539,6 +4584,16 @@ int perturbations_vector_init(
 
           ppv->y[ppv->index_pt_u_gedf] =
             ppw->pv->y[ppw->pv->index_pt_u_gedf];
+
+      }
+
+      if (pba->has_gedf_2 == _TRUE_) {
+
+          ppv->y[ppv->index_pt_delta_gedf_2] =
+            ppw->pv->y[ppw->pv->index_pt_delta_gedf_2];
+
+          ppv->y[ppv->index_pt_u_gedf_2] =
+            ppw->pv->y[ppw->pv->index_pt_u_gedf_2];
 
       }
 
@@ -5497,6 +5552,15 @@ int perturbations_initial_conditions(struct precision * ppr,
     rho_nu += 3.* w_gedf *ppw->pvecback[pba->index_bg_rho_gedf];
   }
 
+  if (pba->has_gedf_2 == _TRUE_) {
+    class_call(background_w_gedf_2(pba, tau, &w_gedf, &dw_over_da_gedf, &integral_gedf),
+               pba->error_message,
+               ppt->error_message);
+    rho_r += 3. * w_gedf * ppw->pvecback[pba->index_bg_rho_gedf_2];
+    rho_m += ppw->pvecback[pba->index_bg_rho_gedf_2] - 3. * w_gedf * ppw->pvecback[pba->index_bg_rho_gedf_2];
+    rho_nu += 3.* w_gedf *ppw->pvecback[pba->index_bg_rho_gedf_2];
+  }
+
   class_test(rho_r == 0.,
              ppt->error_message,
              "stop to avoid division by zero");
@@ -5637,6 +5701,20 @@ int perturbations_initial_conditions(struct precision * ppr,
             ppw->pv->y[ppw->pv->index_pt_u_gedf] = 0.;
           }
           
+      }
+
+      if (pba->has_gedf_2 == _TRUE_) {
+        class_call(background_w_gedf_2(pba,a,&w_gedf,&dw_over_da_gedf,&integral_gedf), pba->error_message, ppt->error_message);
+        perturbations_gedf_2_sound_speeds(pba,a,w_gedf,dw_over_da_gedf,&ca2_gedf,&cs2_gedf);
+
+          ppw->pv->y[ppw->pv->index_pt_delta_gedf_2] = - 0.5*ktau_two*(1.+w_gedf)*(-4.+3.*cs2_gedf)/(32.+12.*w_gedf+6.*cs2_gedf)* ppr->curvature_ini * s2_squared;
+          ppw->pv->y[ppw->pv->index_pt_u_gedf_2] = - 0.5*k*ktau_three*(1.+w_gedf)*cs2_gedf/(32.+12.*w_gedf+6.*cs2_gedf)* ppr->curvature_ini * s2_squared;
+
+          if (ppt->has_gedf_2_perturbations == _FALSE_){
+            ppw->pv->y[ppw->pv->index_pt_delta_gedf_2] = 0.;
+            ppw->pv->y[ppw->pv->index_pt_u_gedf_2] = 0.;
+          }
+
       }
 
 
@@ -5973,6 +6051,14 @@ int perturbations_initial_conditions(struct precision * ppr,
         ppw->pv->y[ppw->pv->index_pt_delta_gedf] -= 3*(1.+w_gedf)*a_prime_over_a*alpha;
         // ppw->pv->y[ppw->pv->index_pt_theta_gedf] += k*k*alpha;
         ppw->pv->y[ppw->pv->index_pt_u_gedf] += k*k*alpha*(1.+w_gedf);
+      }
+
+      if ((pba->has_gedf_2 == _TRUE_)) {
+
+        class_call(background_w_gedf_2(pba,a,&w_gedf,&dw_over_da_gedf,&integral_gedf), pba->error_message, ppt->error_message);
+
+        ppw->pv->y[ppw->pv->index_pt_delta_gedf_2] -= 3*(1.+w_gedf)*a_prime_over_a*alpha;
+        ppw->pv->y[ppw->pv->index_pt_u_gedf_2] += k*k*alpha*(1.+w_gedf);
       }
 
       /* EDF */
@@ -7447,6 +7533,28 @@ int perturbations_total_stress_energy(
       ppw->rho_plus_p_tot += (1.+w_gedf)*ppw->pvecback[pba->index_bg_rho_gedf];
     }
 
+    if (pba->has_gedf_2 == _TRUE_) {
+
+      class_call(background_w_gedf_2(pba,a,&w_gedf,&dw_over_da_gedf,&integral_gedf), pba->error_message, ppt->error_message);
+      perturbations_gedf_2_sound_speeds(pba,a,w_gedf,dw_over_da_gedf,&ca2_gedf,&cs2_gedf);
+
+      ppw->delta_rho_gedf_2 = ppw->pvecback[pba->index_bg_rho_gedf_2]*y[ppw->pv->index_pt_delta_gedf_2];
+
+      ppw->rho_plus_p_theta_gedf_2 = ppw->pvecback[pba->index_bg_rho_gedf_2]*y[ppw->pv->index_pt_u_gedf_2];
+
+      ppw->delta_p_gedf_2 = cs2_gedf * ppw->delta_rho_gedf_2 + (cs2_gedf-ca2_gedf)*(3*a_prime_over_a*ppw->rho_plus_p_theta_gedf_2/k/k);
+      ppw->delta_gedf_2 = y[ppw->pv->index_pt_delta_gedf_2];
+      ppw->ca2_gedf_2_output = ca2_gedf;
+      ppw->cs2_gedf_2_output = cs2_gedf;
+      ppw->u_gedf_2 = y[ppw->pv->index_pt_u_gedf_2];
+
+      ppw->delta_rho += ppw->delta_rho_gedf_2;
+      ppw->rho_plus_p_theta += ppw->rho_plus_p_theta_gedf_2;
+      ppw->delta_p += ppw->delta_p_gedf_2;
+
+      ppw->rho_plus_p_tot += (1.+w_gedf)*ppw->pvecback[pba->index_bg_rho_gedf_2];
+    }
+
     if (pba->has_edf == _TRUE_) {
 
       class_call(background_w_edf(pba,a,&w_edf,&dw_over_da_edf,&integral_edf), pba->error_message, ppt->error_message);
@@ -8270,6 +8378,11 @@ int perturbations_sources(
         + 3.*a_prime_over_a*(1.+pvecback[pba->index_bg_w_gedf])*theta_over_k2; // N-body gauge correction
     }
 
+    if (ppt->has_source_delta_gedf_2 == _TRUE_) {
+      _set_source_(ppt->index_tp_delta_gedf_2) = ppw->delta_rho_gedf_2/pvecback[pba->index_bg_rho_gedf_2]
+        + 3.*a_prime_over_a*(1.+pvecback[pba->index_bg_w_gedf_2])*theta_over_k2; // N-body gauge correction
+    }
+
     /* delta_scf */
     if (ppt->has_source_delta_scf == _TRUE_) {
       if (ppt->gauge == synchronous){
@@ -8412,6 +8525,14 @@ int perturbations_sources(
       class_call(background_w_gedf(pba,a,&w_gedf,&dw_over_da_gedf,&integral_gedf), pba->error_message, ppt->error_message);
 
       _set_source_(ppt->index_tp_u_gedf) = ppw->rho_plus_p_theta_gedf/pvecback[pba->index_bg_rho_gedf]
+        + theta_shift*(1.+w_gedf); // N-body gauge correction
+    }
+
+    if (ppt->has_source_u_gedf_2 == _TRUE_) {
+
+      class_call(background_w_gedf_2(pba,a,&w_gedf,&dw_over_da_gedf,&integral_gedf), pba->error_message, ppt->error_message);
+
+      _set_source_(ppt->index_tp_u_gedf_2) = ppw->rho_plus_p_theta_gedf_2/pvecback[pba->index_bg_rho_gedf_2]
         + theta_shift*(1.+w_gedf); // N-body gauge correction
     }
 
@@ -8562,6 +8683,7 @@ int perturbations_print_variables(double tau,
   double delta_rho_scf=0., rho_plus_p_theta_scf=0.;
   double delta_scf=0., theta_scf=0.;
   double delta_gedf=0., u_gedf=0.;
+  double delta_gedf_2=0., u_gedf_2=0.;
   // double delta_edf=0.;
   /** - ncdm sector begins */
   int n_ncdm;
@@ -8882,6 +9004,15 @@ int perturbations_print_variables(double tau,
       u_gedf = y[ppw->pv->index_pt_u_gedf];
     }
 
+    if (pba->has_gedf_2 == _TRUE_){
+      class_call(background_w_gedf_2(pba,a,&w_gedf,&dw_over_da_gedf,&integral_gedf), pba->error_message, ppt->error_message);
+
+      ppw->T_h_gedf_2 = - (1. + w_gedf) * pvecmetric[ppw->index_mt_h_prime]/2.;
+
+      delta_gedf_2 = y[ppw->pv->index_pt_delta_gedf_2];
+      u_gedf_2 = y[ppw->pv->index_pt_u_gedf_2];
+    }
+
     /* converting synchronous variables to newtonian ones */
     if ((ppt->gauge == synchronous) && (ppt->get_perturbations_in_current_gauge == _FALSE_)) {
 
@@ -8956,6 +9087,11 @@ int perturbations_print_variables(double tau,
         // class_call(background_w_gedf(pba,a,&w_gedf,&dw_over_da_gedf,&integral_gedf), pba->error_message, ppt->error_message);
         delta_gedf += alpha*(-3.0*H*(1.0+pvecback[pba->index_bg_w_gedf]));
         u_gedf += k*k*alpha*(1.0+pvecback[pba->index_bg_w_gedf]);
+      }
+
+      if (pba->has_gedf_2 == _TRUE_) {
+        delta_gedf_2 += alpha*(-3.0*H*(1.0+pvecback[pba->index_bg_w_gedf_2]));
+        u_gedf_2 += k*k*alpha*(1.0+pvecback[pba->index_bg_w_gedf_2]);
       }
 
     }
@@ -9047,6 +9183,14 @@ int perturbations_print_variables(double tau,
     class_store_double(dataptr, ppw->cs2_gedf_output, pba->has_gedf, storeidx);
     class_store_double(dataptr, u_gedf, pba->has_gedf, storeidx);
     class_store_double(dataptr, ppw->T_h_gedf, pba->has_gedf, storeidx);
+    class_store_double(dataptr, ppw->delta_rho_gedf_2, pba->has_gedf_2, storeidx);
+    class_store_double(dataptr, ppw->rho_plus_p_theta_gedf_2, pba->has_gedf_2, storeidx);
+    class_store_double(dataptr, ppw->delta_p_gedf_2, pba->has_gedf_2, storeidx);
+    class_store_double(dataptr, delta_gedf_2, pba->has_gedf_2, storeidx);
+    class_store_double(dataptr, ppw->ca2_gedf_2_output, pba->has_gedf_2, storeidx);
+    class_store_double(dataptr, ppw->cs2_gedf_2_output, pba->has_gedf_2, storeidx);
+    class_store_double(dataptr, u_gedf_2, pba->has_gedf_2, storeidx);
+    class_store_double(dataptr, ppw->T_h_gedf_2, pba->has_gedf_2, storeidx);
   }
   /** - for tensor modes: */
 
@@ -9923,6 +10067,29 @@ int perturbations_derivs(double tau,
         if (ppt->has_gedf_perturbations == _FALSE_){
             dy[pv->index_pt_delta_gedf] = 0.;
             dy[pv->index_pt_u_gedf] = 0.;
+          }
+
+    }
+
+    if (pba->has_gedf_2 == _TRUE_) {
+
+        class_call(background_w_gedf_2(pba,a,&w_gedf,&dw_over_da_gedf,&integral_gedf), pba->error_message, ppt->error_message);
+        perturbations_gedf_2_sound_speeds(pba,a,w_gedf,dw_over_da_gedf,&ca2_gedf,&cs2_gedf);
+
+        dy[pv->index_pt_delta_gedf_2] =
+          -(y[pv->index_pt_u_gedf_2]+(1+w_gedf)*metric_continuity)
+          -3.*(cs2_gedf-w_gedf)*a_prime_over_a*y[pv->index_pt_delta_gedf_2]
+          -9.*(cs2_gedf-ca2_gedf)*a_prime_over_a*a_prime_over_a*y[pv->index_pt_u_gedf_2]/k2;
+
+        dy[pv->index_pt_u_gedf_2] =
+          -(1.-3.*cs2_gedf)*a_prime_over_a*y[pv->index_pt_u_gedf_2]
+          +3*a_prime_over_a*(w_gedf - ca2_gedf)*y[pv->index_pt_u_gedf_2]
+          +cs2_gedf*k2*y[pv->index_pt_delta_gedf_2]
+          +metric_euler*(1.+w_gedf);
+
+        if (ppt->has_gedf_2_perturbations == _FALSE_){
+            dy[pv->index_pt_delta_gedf_2] = 0.;
+            dy[pv->index_pt_u_gedf_2] = 0.;
           }
 
     }

@@ -6,6 +6,7 @@ import numpy as nm
 import os
 import subprocess as sbp
 import os.path as osp
+import sys
 
 # Recover the gcc compiler
 GCCPATH_STRING = sbp.Popen(
@@ -39,7 +40,11 @@ with open(os.path.join(include_folder, 'common.h'), 'r') as v_file:
             break
 
 # Define cython extension and fix Python version
-classy_ext = Extension("classy", [os.path.join(classy_folder, "classy.pyx")],
+classy_source = os.path.join(classy_folder, "classy.pyx")
+if sys.version_info >= (3, 13):
+    classy_source = os.path.join(classy_folder, "classy.cpp")
+
+classy_ext = Extension("classy", [classy_source],
                            include_dirs=[nm.get_include(), include_folder, heat_folder, recfast_folder, hyrec_folder, hmcode_folder, halofit_folder],
                            libraries=liblist,
                            library_dirs=[root_folder, GCCPATH],
@@ -47,7 +52,6 @@ classy_ext = Extension("classy", [os.path.join(classy_folder, "classy.pyx")],
                            language="c++",
                            extra_compile_args=["-std=c++11"]
                        )
-import sys
 classy_ext.cython_directives = {'language_level': "3" if sys.version_info.major>=3 else "2"}
 
 setup(

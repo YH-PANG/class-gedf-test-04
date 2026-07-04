@@ -536,7 +536,8 @@ int input_shooting(struct file_content * pfc,
                                        "Omega_scf",
                                        "Omega_ini_dcdm",
                                        "omega_ini_dcdm",
-                                       "f_gedf"};
+                                       "f_gedf",
+                                       "f_gedf_2"};
 
   /* array of corresponding parameters that must be adjusted in order to meet the target (= unknown parameters) */
   char * const unknown_namestrings[] = {"h",                        /* unknown param for target '100*theta_s' */
@@ -547,7 +548,8 @@ int input_shooting(struct file_content * pfc,
                                         "scf_shooting_parameter",   /* unknown param for target 'Omega_scf' */
                                         "Omega_dcdmdr",             /* unknown param for target 'Omega_ini_dcdm' */
                                         "omega_dcdmdr",             /* unknown param for target 'omega_ini_dcdm' */
-                                        "rho_gedf"};                /* unknown param for target 'f_gedf' */
+                                        "rho_gedf",                 /* unknown param for target 'f_gedf' */
+                                        "rho_gedf_2"};              /* unknown param for target 'f_gedf_2' */
 
   /* for each target, module up to which we need to run CLASS in order
      to compute the targetted quantities (not running the whole code
@@ -560,7 +562,8 @@ int input_shooting(struct file_content * pfc,
                                         cs_background,     /* computation stage for target 'Omega_scf' */
                                         cs_background,     /* computation stage for target 'Omega_ini_dcdm' */
                                         cs_background,     /* computation stage for target 'omega_ini_dcdm' */
-                                        cs_background};     /* computation stage for target 'f_gedf' */
+                                        cs_background,     /* computation stage for target 'f_gedf' */
+                                        cs_background};    /* computation stage for target 'f_gedf_2' */
 
   struct fzerofun_workspace fzw;
 
@@ -575,6 +578,15 @@ int input_shooting(struct file_content * pfc,
   class_test((flag1 == _TRUE_) && (flag2 == _TRUE_),
              errmsg,
              "You can only enter one of 'f_gedf' or 'rho_gedf'.");
+  class_call(parser_read_double(pfc,"f_gedf_2",&param1,&flag1,errmsg),
+             errmsg,
+             errmsg);
+  class_call(parser_read_double(pfc,"rho_gedf_2",&param2,&flag2,errmsg),
+             errmsg,
+             errmsg);
+  class_test((flag1 == _TRUE_) && (flag2 == _TRUE_),
+             errmsg,
+             "You can only enter one of 'f_gedf_2' or 'rho_gedf_2'.");
 
   /** Do we need to fix unknown parameters? */
   unknown_parameters_size = 0;
@@ -900,6 +912,14 @@ int input_needs_shooting_for_target(struct file_content * pfc,
     class_test((target_value < 0.) || (target_value >= 1.),
                errmsg,
                "The requested value of 'f_gedf' must be in the interval [0,1), not %g.",
+               target_value);
+    if (target_value == 0.)
+      *needs_shooting = _FALSE_;
+    break;
+  case f_gedf_2:
+    class_test((target_value < 0.) || (target_value >= 1.),
+               errmsg,
+               "The requested value of 'f_gedf_2' must be in the interval [0,1), not %g.",
                target_value);
     if (target_value == 0.)
       *needs_shooting = _FALSE_;
@@ -1304,6 +1324,22 @@ int input_get_guess(double *xguess,
       dxdy[index_guess] = rho_no_gedf
         / pow(1. - pfzw->target_value[index_guess],2);
       break;
+    case f_gedf_2:
+      class_test((pfzw->target_value[index_guess] < 0.) || (pfzw->target_value[index_guess] >= 1.),
+                 errmsg,
+                 "The requested value of 'f_gedf_2' must be in the interval [0,1), not %g.",
+                 pfzw->target_value[index_guess]);
+      Omega_r = ba.Omega0_g + ba.Omega0_ur + ba.Omega0_idr;
+      Omega_m = ba.Omega0_b + ba.Omega0_cdm + ba.Omega0_idm + ba.Omega0_dcdmdr;
+      rho_no_gedf = pow(ba.H0,2) * (Omega_r/pow(ba.ac_gedf_2,4)
+                                    + Omega_m/pow(ba.ac_gedf_2,3)
+                                    + ba.Omega0_lambda
+                                    + ba.Omega0_fld);
+      xguess[index_guess] = pfzw->target_value[index_guess] * rho_no_gedf
+        / (1. - pfzw->target_value[index_guess]);
+      dxdy[index_guess] = rho_no_gedf
+        / pow(1. - pfzw->target_value[index_guess],2);
+      break;
 
     case sigma8:
       /* Assume linear relationship between A_s and sigma8 and fix coefficient
@@ -1530,6 +1566,9 @@ int input_try_unknown_parameters(double * unknown_parameter,
       break;
     case f_gedf:
       output[i] = ba.f_gedf-pfzw->target_value[i];
+      break;
+    case f_gedf_2:
+      output[i] = ba.f_gedf_2-pfzw->target_value[i];
       break;
     case sigma8:
       output[i] = fo.sigma8[fo.index_pk_m];
@@ -3483,6 +3522,31 @@ int input_read_parameters_species(struct file_content * pfc,
     pba->wi_edf = param1;
   if (flag2 == _TRUE_)
     pba->wf_edf = param2;
+  class_call(parser_read_double(pfc,"rho_gedf_2",&param1,&flag1,errmsg),
+             errmsg,
+             errmsg);
+  class_call(parser_read_double(pfc,"ac_gedf_2",&param2,&flag2,errmsg),
+             errmsg,
+             errmsg);
+  class_call(parser_read_double(pfc,"s_a_gedf_2",&param3,&flag3,errmsg),
+             errmsg,
+             errmsg);
+  class_call(parser_read_double(pfc,"wi_gedf_2",&param4,&flag4,errmsg),
+             errmsg,
+             errmsg);
+  if (flag1 == _TRUE_)
+    pba->rho_gedf_2 = param1;
+  if (flag2 == _TRUE_)
+    pba->ac_gedf_2 = param2;
+  if (flag3 == _TRUE_)
+    pba->s_a_gedf_2 = param3;
+  if (flag4 == _TRUE_)
+    pba->wi_gedf_2 = param4;
+  class_call(parser_read_double(pfc,"wf_gedf_2",&param1,&flag1,errmsg),
+             errmsg,
+             errmsg);
+  if (flag1 == _TRUE_)
+    pba->wf_gedf_2 = param1;
   class_call(parser_read_string(pfc,
                                   "has_gedf_perturbations",
                                   &string1,
@@ -3497,6 +3561,22 @@ int input_read_parameters_species(struct file_content * pfc,
       }
       else{
         ppt->has_gedf_perturbations = _FALSE_;
+      }
+    }
+  class_call(parser_read_string(pfc,
+                                  "has_gedf_2_perturbations",
+                                  &string1,
+                                  &flag1,
+                                  errmsg),
+                errmsg,
+                errmsg);
+
+    if (flag1 == _TRUE_){
+      if((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL)){
+        ppt->has_gedf_2_perturbations = _TRUE_;
+      }
+      else{
+        ppt->has_gedf_2_perturbations = _FALSE_;
       }
     }
 
@@ -5865,6 +5945,8 @@ int input_default_params(struct background *pba,
 
   /** 2) Perturbed recombination */
   ppt->has_perturbed_recombination=_FALSE_;
+  ppt->has_gedf_perturbations = _FALSE_;
+  ppt->has_gedf_2_perturbations = _FALSE_;
   /** 3) Modes */
   ppt->has_scalars=_TRUE_;
   ppt->has_vectors=_FALSE_;
@@ -6059,8 +6141,14 @@ int input_default_params(struct background *pba,
   pba->f_gedf = 0.;
   pba->s_a_gedf = 1000.;
   pba->ac_gedf = 1./3400.;
+  pba->rho_gedf_2 = 0.0;
+  pba->f_gedf_2 = 0.;
+  pba->s_a_gedf_2 = 1000.;
+  pba->ac_gedf_2 = 1./3400.;
   pba->wi_edf = -1.;
   pba->wf_edf = 0.5;
+  pba->wi_gedf_2 = -1.;
+  pba->wf_gedf_2 = 0.5;
   /** 9.b) Omega scalar field */
   /** 9.b.1) Potential parameters and initial conditions */
   pba->scf_parameters = NULL;
