@@ -117,6 +117,8 @@ setup.py
 ./source/thermodynamics.c
 ./source/transfer.c
 ./tools/arrays.c
+./tools/check_classy_reuse.py
+./tools/check_gedf_reference_points.py
 ./tools/common.c
 ./tools/dei_rkck.c
 ./tools/evolver_ndf15.c
@@ -242,6 +244,8 @@ source/primordial.c
 source/thermodynamics.c
 source/transfer.c
 tools/arrays.c
+tools/check_classy_reuse.py
+tools/check_gedf_reference_points.py
 tools/common.c
 tools/dei_rkck.c
 tools/evolver_ndf15.c

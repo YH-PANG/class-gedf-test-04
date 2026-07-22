@@ -1,0 +1,396 @@
+theory:
+  classy:
+    path: /data2/yehuang/Documents/Codes/class-gedf-test-05-2
+    extra_args:
+      N_ncdm: 1
+      m_ncdm: 0.06
+      N_ur: 2.0308
+      T_cmb: 2.7255
+      YHe: BBN
+      non_linear: hmcode
+      hmcode_version: '2020'
+      recombination: HyRec
+      lensing: ye
+      output: lCl,tCl,pCl,mPk
+      modes: s
+      l_max_scalars: 9500
+      delta_l_max: 1800
+      P_k_max_h/Mpc: 100.0
+      l_logstep: 1.025
+      l_linstep: 20
+      perturbations_sampling_stepsize: 0.05
+      l_switch_limber: 30.0
+      hyper_sampling_flat: 32.0
+      l_max_g: 40
+      l_max_ur: 35
+      l_max_pol_g: 60
+      ur_fluid_approximation: 2
+      ur_fluid_trigger_tau_over_tau_k: 130.0
+      radiation_streaming_approximation: 2
+      radiation_streaming_trigger_tau_over_tau_k: 240.0
+      hyper_flat_approximation_nu: 7000.0
+      transfer_neglect_delta_k_S_t0: 0.17
+      transfer_neglect_delta_k_S_t1: 0.05
+      transfer_neglect_delta_k_S_t2: 0.17
+      transfer_neglect_delta_k_S_e: 0.17
+      accurate_lensing: 1
+      start_small_k_at_tau_c_over_tau_h: 0.0004
+      start_large_k_at_tau_h_over_tau_k: 0.05
+      tight_coupling_trigger_tau_c_over_tau_h: 0.005
+      tight_coupling_trigger_tau_c_over_tau_k: 0.008
+      start_sources_at_tau_c_over_tau_h: 0.006
+      l_max_ncdm: 30
+      tol_ncdm_synchronous: 1.0e-06
+      has_gedf_perturbations: ye
+      input_verbose: 11
+      background_verbose: 2
+    ignore_obsolete: true
+  mflike.BandpowerForeground:
+    top_hat_band: null
+    beam_profile:
+      beam_from_file: null
+    normalisation:
+      nu_0: 150.0
+      ell_0: 3000
+      T_CMB: 2.725
+    experiments:
+    - dr6_pa4_f220
+    - dr6_pa5_f090
+    - dr6_pa5_f150
+    - dr6_pa6_f090
+    - dr6_pa6_f150
+    bandint_freqs:
+    - 220
+    - 90
+    - 150
+    - 90
+    - 150
+    components:
+      tt:
+      - kSZ
+      - tSZ_and_CIB
+      - cibp
+      - dust
+      - radio
+      te:
+      - radio
+      - dust
+      ee:
+      - radio
+      - dust
+likelihood:
+  planck_2018_lowl.TT: null
+  planck_2018_lowl.EE_sroll2: null
+  act_dr6_cmbonly.PlanckActCut:
+    dataset_params:
+      use_cl: tt te ee
+      lmin_cuts: 0 0 0
+      lmax_cuts: 1000 600 600
+  act_dr6_mflike.ACTDR6MFLike:
+    input_file: dr6_data.fits
+  my_H0:
+    external: 'lambda _self: stats.norm.logpdf(_self.provider.get_param("H0"), loc=73.17,
+      scale=0.86)'
+    requires:
+    - H0
+prior:
+  TTdust_prior: 'lambda a_gtt: stats.norm.logpdf(a_gtt, loc=7.95, scale=0.32)'
+  TEdust_prior: 'lambda a_gte: stats.norm.logpdf(a_gte, loc=0.423, scale=0.03)'
+  EEdust_prior: 'lambda a_gee: stats.norm.logpdf(a_gee, loc=0.1681, scale=0.017)'
+params:
+  omega_b:
+    prior:
+      min: 0.017
+      max: 0.027
+    ref:
+      dist: norm
+      loc: 0.02237
+      scale: 0.0003
+    proposal: 0.00015
+    latex: \Omega_\mathrm{b}h^2
+  omega_cdm:
+    prior:
+      min: 0.09
+      max: 0.15
+    ref:
+      dist: norm
+      loc: 0.12
+      scale: 0.0024
+    proposal: 0.0012
+    latex: \Omega_\mathrm{c}h^2
+  theta_s_1e2:
+    prior:
+      min: 1.038
+      max: 1.044
+    ref:
+      dist: norm
+      loc: 1.04092
+      scale: 0.00062
+    proposal: 0.00031
+    latex: \theta_\mathrm{MC}
+    drop: true
+  100*theta_s:
+    value: 'lambda theta_s_1e2: theta_s_1e2'
+    derived: false
+  logA:
+    prior:
+      min: 2.6
+      max: 3.5
+    ref:
+      dist: norm
+      loc: 3.044
+      scale: 0.028
+    proposal: 0.014
+    latex: \log(10^{10} A_\mathrm{s})
+    drop: true
+  A_s:
+    value: 'lambda logA: 1e-10*np.exp(logA)'
+    latex: A_\mathrm{s}
+  n_s:
+    prior:
+      min: 0.9
+      max: 1.1
+    ref:
+      dist: norm
+      loc: 0.98
+      scale: 0.0084
+    proposal: 0.0042
+    latex: n_\mathrm{s}
+  tau_reio:
+    prior:
+      min: 0.0
+      max: 0.1
+    ref:
+      dist: norm
+      loc: 0.054
+      scale: 0.01
+    proposal: 0.0073
+    latex: \tau_\mathrm{reio}
+  wi_edf:
+    value: -1.0
+  wf_edf:
+    value: 1.0
+  s_a_gedf:
+    value: 3.0
+  log10z_c:
+    prior:
+      min: 3.0
+      max: 3.75
+    ref:
+      dist: norm
+      loc: 3.5
+      scale: 0.05
+    proposal: 0.08
+    latex: \log_{10}z_c
+    drop: true
+  ac_gedf:
+    value: 'lambda log10z_c: 1./(1. + 10.**log10z_c)'
+    latex: a_c
+  H0:
+    latex: H_0
+  sigma8:
+    latex: \sigma_8
+  f_gedf:
+    prior:
+      min: 0.001
+      max: 0.5
+    ref:
+      dist: norm
+      loc: 0.1
+      scale: 0.02
+    proposal: 0.01
+    latex: f_{\mathrm{GEDF}}
+  f_gedf_2:
+    prior:
+      min: 0.001
+      max: 0.5
+    ref:
+      dist: norm
+      loc: 0.1
+      scale: 0.02
+    proposal: 0.01
+    latex: f_{\mathrm{GEDF,}2}
+  wi_gedf_2:
+    value: -1.0
+  wf_gedf_2:
+    value: 1.0
+  s_a_gedf_2:
+    value: 3.0
+  log10z_c_2:
+    prior:
+      min: 3.75
+      max: 4.5
+    ref:
+      dist: norm
+      loc: 3.9
+      scale: 0.05
+    proposal: 0.08
+    latex: \log_{10}z_{c,2}
+    drop: true
+  ac_gedf_2:
+    value: 'lambda log10z_c_2: 1./(1. + 10.**log10z_c_2)'
+    latex: a_{c,2}
+  A_planck:
+    prior:
+      min: 0.5
+      max: 1.5
+    ref:
+      dist: norm
+      loc: 1.0
+      scale: 0.1
+    latex: A_{\rm planck}
+    proposal: 0.003
+  a_tSZ:
+    prior:
+      min: 0.0
+      max: 10.0
+    ref:
+      dist: norm
+      loc: 5.6
+      scale: 1.0
+    proposal: 0.1
+    latex: a_\mathrm{tSZ}
+  a_kSZ:
+    prior:
+      min: 0.0
+      max: 10.0
+    ref:
+      dist: norm
+      loc: 2.0
+      scale: 2.0
+    proposal: 0.1
+    latex: a_\mathrm{kSZ}
+  a_p:
+    prior:
+      min: 0.0
+      max: 50.0
+    ref:
+      dist: norm
+      loc: 6.0
+      scale: 0.7
+    proposal: 0.3
+    latex: a_p
+  beta_p:
+    prior:
+      min: 0.0
+      max: 5.0
+    ref:
+      dist: norm
+      loc: 2.0
+      scale: 0.05
+    proposal: 0.015
+    latex: \beta_p
+  a_c:
+    prior:
+      min: 0.0
+      max: 50.0
+    ref:
+      dist: norm
+      loc: 3.0
+      scale: 1.0
+    proposal: 0.7
+    latex: a_c
+  beta_c:
+    value: 'lambda beta_p: beta_p'
+    latex: \beta_c
+  a_s:
+    prior:
+      min: 0.0
+      max: 50.0
+    ref:
+      dist: norm
+      loc: 3.0
+      scale: 1.0
+    proposal: 0.3
+    latex: a_s
+  beta_s:
+    prior:
+      min: -3.5
+      max: -1.5
+    proposal: 0.3
+    latex: \beta_s
+  a_gtt:
+    prior:
+      min: 0.0
+      max: 50.0
+    ref:
+      dist: norm
+      loc: 8.0
+      scale: 0.6
+    proposal: 0.4
+    latex: a_\mathrm{dust}^\mathrm{TT}
+  a_gte:
+    prior:
+      min: 0.0
+      max: 1.0
+    ref:
+      dist: norm
+      loc: 0.42
+      scale: 0.06
+    proposal: 0.03
+    latex: a_\mathrm{dust}^\mathrm{TE}
+  a_gee:
+    prior:
+      min: 0.0
+      max: 1.0
+    ref:
+      dist: norm
+      loc: 0.17
+      scale: 0.03
+    proposal: 0.03
+    latex: a_\mathrm{dust}^\mathrm{EE}
+  a_psee:
+    prior:
+      min: 0.0
+      max: 1.0
+    ref:
+      dist: halfnorm
+      loc: 0.0
+      scale: 0.04
+    proposal: 0.05
+    latex: a_\mathrm{ps}^\mathrm{EE}
+  a_pste:
+    prior:
+      min: -1.0
+      max: 1.0
+    ref:
+      dist: norm
+      loc: 0.0
+      scale: 0.11
+    proposal: 0.05
+    latex: a_\mathrm{ps}^\mathrm{TE}
+  xi:
+    prior:
+      min: 0.0
+      max: 0.2
+    proposal: 0.05
+    latex: \xi
+  alpha_tSZ:
+    prior:
+      min: -5.0
+      max: 5.0
+    ref:
+      dist: norm
+      loc: 0.0
+      scale: 0.3
+    proposal: 0.1
+    latex: \alpha_\mathrm{tSZ}
+  T_d:
+    value: 9.6
+    latex: T_d
+sampler:
+  mcmc:
+    # Measure one valid point (plus Cobaya's discarded warm-up evaluation).
+    # Invalid CLASS shooting points are rejected and retried because
+    # stop_at_error is disabled below.
+    measure_speeds: 1
+    drag: false
+    proposal_scale: 1.9
+    Rminus1_stop: 0.01
+    output_every: 60s
+    learn_every: 10
+    learn_proposal_Rminus1_max: 1000.0
+    learn_proposal_Rminus1_max_early: 10000.0
+    max_tries: 1000
+output: 260705_gedf_2
+stop_at_error: false
