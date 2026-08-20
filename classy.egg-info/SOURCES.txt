@@ -118,6 +118,7 @@ setup.py
 ./source/transfer.c
 ./tools/arrays.c
 ./tools/check_classy_reuse.py
+./tools/check_dadb_like.py
 ./tools/check_gedf_reference_points.py
 ./tools/common.c
 ./tools/dei_rkck.c
@@ -243,8 +244,10 @@ source/perturbations.c
 source/primordial.c
 source/thermodynamics.c
 source/transfer.c
+test/test_model_independent_gedf.py
 tools/arrays.c
 tools/check_classy_reuse.py
+tools/check_dadb_like.py
 tools/check_gedf_reference_points.py
 tools/common.c
 tools/dei_rkck.c

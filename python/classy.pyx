@@ -3581,8 +3581,6 @@ cdef class Class:
                 value = self.ba.f_edf
             elif name == 'f_gedf':
                 value = self.ba.f_gedf
-            elif name == 'f_gedf_2':
-                value = self.ba.f_gedf_2
             elif name == 'xi_idr':
                 value = self.ba.T_idr/self.ba.T_cmb
             elif name == 'N_dg':

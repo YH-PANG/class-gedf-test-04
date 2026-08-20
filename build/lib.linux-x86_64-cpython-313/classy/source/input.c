@@ -528,10 +528,8 @@ int input_shooting(struct file_content * pfc,
   int shooting_failed=_FALSE_;
   int has_H0 = _FALSE_;
   int has_f_gedf_target = _FALSE_;
-  int has_f_gedf_2_target = _FALSE_;
   int separate_gedf_shooting = _FALSE_;
   double f_gedf_target = 0.;
-  double f_gedf_2_target = 0.;
 
   /* array of parameters passed by the user for which we need shooting (= target parameters) */
   char * const target_namestrings[] = {"100*theta_s",
@@ -542,8 +540,7 @@ int input_shooting(struct file_content * pfc,
                                        "Omega_scf",
                                        "Omega_ini_dcdm",
                                        "omega_ini_dcdm",
-                                       "f_gedf",
-                                       "f_gedf_2"};
+                                       "f_gedf"};
 
   /* array of corresponding parameters that must be adjusted in order to meet the target (= unknown parameters) */
   char * const unknown_namestrings[] = {"h",                        /* unknown param for target '100*theta_s' */
@@ -554,8 +551,7 @@ int input_shooting(struct file_content * pfc,
                                         "scf_shooting_parameter",   /* unknown param for target 'Omega_scf' */
                                         "Omega_dcdmdr",             /* unknown param for target 'Omega_ini_dcdm' */
                                         "omega_dcdmdr",             /* unknown param for target 'omega_ini_dcdm' */
-                                        "rho_gedf",                 /* unknown param for target 'f_gedf' */
-                                        "rho_gedf_2"};              /* unknown param for target 'f_gedf_2' */
+                                        "rho_gedf"};                /* unknown param for target 'f_gedf' */
 
   /* for each target, module up to which we need to run CLASS in order
      to compute the targetted quantities (not running the whole code
@@ -568,8 +564,7 @@ int input_shooting(struct file_content * pfc,
                                         cs_background,     /* computation stage for target 'Omega_scf' */
                                         cs_background,     /* computation stage for target 'Omega_ini_dcdm' */
                                         cs_background,     /* computation stage for target 'omega_ini_dcdm' */
-                                        cs_background,     /* computation stage for target 'f_gedf' */
-                                        cs_background};    /* computation stage for target 'f_gedf_2' */
+                                        cs_background};    /* computation stage for target 'f_gedf' */
 
   struct fzerofun_workspace fzw;
 
@@ -587,21 +582,9 @@ int input_shooting(struct file_content * pfc,
   class_test((has_f_gedf_target == _TRUE_) && (flag2 == _TRUE_),
              errmsg,
              "You can only enter one of 'f_gedf' or 'rho_gedf'.");
-  class_call(parser_read_double(pfc,"f_gedf_2",&f_gedf_2_target,&has_f_gedf_2_target,errmsg),
-             errmsg,
-             errmsg);
-  class_call(parser_read_double(pfc,"rho_gedf_2",&param2,&flag2,errmsg),
-             errmsg,
-             errmsg);
-  class_test((has_f_gedf_2_target == _TRUE_) && (flag2 == _TRUE_),
-             errmsg,
-             "You can only enter one of 'f_gedf_2' or 'rho_gedf_2'.");
-
-  /* With a fixed H0 there is no need to couple the two GEDF targets to
-     theta_s (through h). Shoot each GEDF density in its own 1D problem,
-     which is more robust than including both in the general Newton solve. */
+  /* With fixed H0, shoot the GEDF density in its own robust 1D problem. */
   separate_gedf_shooting = (has_H0 == _TRUE_)
-    && ((has_f_gedf_target == _TRUE_) || (has_f_gedf_2_target == _TRUE_));
+    && (has_f_gedf_target == _TRUE_);
 
   /** Do we need to fix unknown parameters? */
   unknown_parameters_size = 0;
@@ -611,8 +594,7 @@ int input_shooting(struct file_content * pfc,
                errmsg,
                errmsg);
     if (flag1 == _TRUE_){
-      if ((separate_gedf_shooting == _TRUE_)
-          && ((index_target == f_gedf) || (index_target == f_gedf_2)))
+      if ((separate_gedf_shooting == _TRUE_) && (index_target == f_gedf))
         continue;
       /* input_needs_shoting_for_target takes care of the case where, for
          instance, Omega_dcdmdr is set to 0.0, and we don't need shooting */
@@ -794,21 +776,21 @@ int input_shooting(struct file_content * pfc,
     free(fzw.target_value);
   }
 
-  /** With H0 fixed, shoot the two GEDF fractions independently in 1D. */
+  /** With H0 fixed, shoot the GEDF fraction in 1D. */
   if (separate_gedf_shooting == _TRUE_) {
-    enum target_names gedf_target_names[] = {f_gedf, f_gedf_2};
-    char * gedf_target_namestrings[] = {"f_gedf", "f_gedf_2"};
-    char * gedf_unknown_namestrings[] = {"rho_gedf", "rho_gedf_2"};
-    double gedf_target_values[] = {f_gedf_target, f_gedf_2_target};
-    int gedf_target_flags[] = {has_f_gedf_target, has_f_gedf_2_target};
-    int gedf_unknown_indices[] = {-1, -1};
-    int gedf_active[] = {_FALSE_, _FALSE_};
+    enum target_names gedf_target_names[] = {f_gedf};
+    char * gedf_target_namestrings[] = {"f_gedf"};
+    char * gedf_unknown_namestrings[] = {"rho_gedf"};
+    double gedf_target_values[] = {f_gedf_target};
+    int gedf_target_flags[] = {has_f_gedf_target};
+    int gedf_unknown_indices[] = {-1};
+    int gedf_active[] = {_FALSE_};
     int gedf_index, gedf_iteration;
     int gedf_active_count = 0;
     int gedf_converged = _FALSE_;
     double max_relative_change;
 
-    for (gedf_index = 0; gedf_index < 2; gedf_index++) {
+    for (gedf_index = 0; gedf_index < 1; gedf_index++) {
       if (gedf_target_flags[gedf_index] == _FALSE_)
         continue;
 
@@ -831,7 +813,7 @@ int input_shooting(struct file_content * pfc,
          gedf_iteration++) {
       max_relative_change = 0.;
 
-      for (gedf_index = 0; gedf_index < 2; gedf_index++) {
+      for (gedf_index = 0; gedf_index < 1; gedf_index++) {
         FileArg swap_name, swap_value;
         short swap_read;
         double previous_x;
@@ -925,7 +907,7 @@ int input_shooting(struct file_content * pfc,
 
     if ((shooting_failed == _FALSE_) && (gedf_converged == _FALSE_)) {
       class_sprintf(pba->shooting_error,
-                    "Separate H0 shooting of f_gedf and f_gedf_2 did not converge after %d passes.",
+                    "Separate H0 shooting of f_gedf did not converge after %d passes.",
                     gedf_iteration);
       shooting_failed = _TRUE_;
     }
@@ -1072,14 +1054,6 @@ int input_needs_shooting_for_target(struct file_content * pfc,
     class_test((target_value < 0.) || (target_value >= 1.),
                errmsg,
                "The requested value of 'f_gedf' must be in the interval [0,1), not %g.",
-               target_value);
-    if (target_value == 0.)
-      *needs_shooting = _FALSE_;
-    break;
-  case f_gedf_2:
-    class_test((target_value < 0.) || (target_value >= 1.),
-               errmsg,
-               "The requested value of 'f_gedf_2' must be in the interval [0,1), not %g.",
                target_value);
     if (target_value == 0.)
       *needs_shooting = _FALSE_;
@@ -1366,12 +1340,6 @@ int input_get_guess(double *xguess,
   double rho_no_gedf, Omega_r, Omega_m;
   int index_guess;
   int index_ncdm; double N_nonur_guess = 0.0;
-  int index_f_gedf = -1, index_f_gedf_2 = -1;
-  double rho_no_gedf_1 = 0., rho_no_gedf_2 = 0.;
-  double k_gedf = 0., k_gedf_2 = 0.;
-  double integral_gedf_ac1 = 0., integral_gedf_ac2 = 0.;
-  double integral_gedf2_ac1 = 0., integral_gedf2_ac2 = 0.;
-  double w_tmp, dw_tmp, det;
 
   /* Cheat to read only known parameters: */
   pfzw->fc.size -= pfzw->target_size;
@@ -1411,7 +1379,7 @@ int input_get_guess(double *xguess,
       dxdy[index_guess] = 1.;
       break;
     case Omega_dcdmdr:
-      Omega_M = ba.Omega0_cdm+ba.Omega0_idm+ba.Omega0_dcdmdr+ba.Omega0_b;
+      Omega_M = ba.Omega0_cdm+ba.Omega0_dadb_d+ba.Omega0_idm+ba.Omega0_dcdmdr+ba.Omega0_b;
       /* *
        * This formula is exact in a Matter + Lambda Universe, but only for Omega_dcdm,
        * not the combined.
@@ -1430,7 +1398,7 @@ int input_get_guess(double *xguess,
       dxdy[index_guess] = 1./a_decay;
       break;
     case omega_dcdmdr:
-      Omega_M = ba.Omega0_cdm+ba.Omega0_idm+ba.Omega0_dcdmdr+ba.Omega0_b;
+      Omega_M = ba.Omega0_cdm+ba.Omega0_dadb_d+ba.Omega0_idm+ba.Omega0_dcdmdr+ba.Omega0_b;
       gamma = ba.Gamma_dcdm/ba.H0;
       if (gamma < 1)
         a_decay = 1.0;
@@ -1463,7 +1431,7 @@ int input_get_guess(double *xguess,
       /* This works since correspondence is Omega_ini_dcdm -> Omega_dcdmdr and
          omega_ini_dcdm -> omega_dcdmdr */
       Omega0_dcdmdr *=pfzw->target_value[index_guess];
-      Omega_M = ba.Omega0_cdm+ba.Omega0_idm+Omega0_dcdmdr+ba.Omega0_b;
+      Omega_M = ba.Omega0_cdm+ba.Omega0_dadb_d+ba.Omega0_idm+Omega0_dcdmdr+ba.Omega0_b;
       gamma = ba.Gamma_dcdm/ba.H0;
       if (gamma < 1)
         a_decay = 1.0;
@@ -1480,37 +1448,15 @@ int input_get_guess(double *xguess,
                  "The requested value of 'f_gedf' must be in the interval [0,1), not %g.",
                  pfzw->target_value[index_guess]);
       Omega_r = ba.Omega0_g + ba.Omega0_ur + ba.Omega0_idr;
-      Omega_m = ba.Omega0_b + ba.Omega0_cdm + ba.Omega0_idm + ba.Omega0_dcdmdr;
+      Omega_m = ba.Omega0_b + ba.Omega0_cdm + ba.Omega0_dadb_d + ba.Omega0_idm + ba.Omega0_dcdmdr;
       rho_no_gedf = pow(ba.H0,2) * (Omega_r/pow(ba.ac_gedf,4)
                                     + Omega_m/pow(ba.ac_gedf,3)
                                     + ba.Omega0_lambda
                                     + ba.Omega0_fld);
-      rho_no_gedf_1 = rho_no_gedf;
-      k_gedf = pfzw->target_value[index_guess] / (1. - pfzw->target_value[index_guess]);
       xguess[index_guess] = pfzw->target_value[index_guess] * rho_no_gedf
         / (1. - pfzw->target_value[index_guess]);
       dxdy[index_guess] = rho_no_gedf
         / pow(1. - pfzw->target_value[index_guess],2);
-      index_f_gedf = index_guess;
-      break;
-    case f_gedf_2:
-      class_test((pfzw->target_value[index_guess] < 0.) || (pfzw->target_value[index_guess] >= 1.),
-                 errmsg,
-                 "The requested value of 'f_gedf_2' must be in the interval [0,1), not %g.",
-                 pfzw->target_value[index_guess]);
-      Omega_r = ba.Omega0_g + ba.Omega0_ur + ba.Omega0_idr;
-      Omega_m = ba.Omega0_b + ba.Omega0_cdm + ba.Omega0_idm + ba.Omega0_dcdmdr;
-      rho_no_gedf = pow(ba.H0,2) * (Omega_r/pow(ba.ac_gedf_2,4)
-                                    + Omega_m/pow(ba.ac_gedf_2,3)
-                                    + ba.Omega0_lambda
-                                    + ba.Omega0_fld);
-      rho_no_gedf_2 = rho_no_gedf;
-      k_gedf_2 = pfzw->target_value[index_guess] / (1. - pfzw->target_value[index_guess]);
-      xguess[index_guess] = pfzw->target_value[index_guess] * rho_no_gedf
-        / (1. - pfzw->target_value[index_guess]);
-      dxdy[index_guess] = rho_no_gedf
-        / pow(1. - pfzw->target_value[index_guess],2);
-      index_f_gedf_2 = index_guess;
       break;
 
     case sigma8:
@@ -1525,39 +1471,6 @@ int input_get_guess(double *xguess,
       xguess[index_guess] = 2.43e-9/0.891*pfzw->target_value[index_guess];
       dxdy[index_guess] = 2.43e-9/0.891;
       break;
-    }
-  }
-
-  if ((index_f_gedf >= 0) && (index_f_gedf_2 >= 0)) {
-    class_call(background_w_gedf(&ba,ba.ac_gedf,&w_tmp,&dw_tmp,&integral_gedf_ac1),
-               ba.error_message,
-               errmsg);
-    class_call(background_w_gedf(&ba,ba.ac_gedf_2,&w_tmp,&dw_tmp,&integral_gedf_ac2),
-               ba.error_message,
-               errmsg);
-    class_call(background_w_gedf_2(&ba,ba.ac_gedf,&w_tmp,&dw_tmp,&integral_gedf2_ac1),
-               ba.error_message,
-               errmsg);
-    class_call(background_w_gedf_2(&ba,ba.ac_gedf_2,&w_tmp,&dw_tmp,&integral_gedf2_ac2),
-               ba.error_message,
-               errmsg);
-
-    det = 1. - k_gedf * k_gedf_2 * exp((integral_gedf_ac2 - integral_gedf_ac1)
-                                       + (integral_gedf2_ac1 - integral_gedf2_ac2));
-
-    if (fabs(det) > 1e-12) {
-      xguess[index_f_gedf] =
-        k_gedf * (rho_no_gedf_1 + k_gedf_2 * rho_no_gedf_2 * exp(integral_gedf2_ac1 - integral_gedf2_ac2)) / det;
-      xguess[index_f_gedf_2] =
-        k_gedf_2 * (rho_no_gedf_2 + k_gedf * rho_no_gedf_1 * exp(integral_gedf_ac2 - integral_gedf_ac1)) / det;
-    }
-    else {
-      /* Fall back to the uncoupled estimates above when the coupled system
-         becomes nearly singular. The root finder can refine from there. */
-      dxdy[index_f_gedf] = rho_no_gedf_1
-        / pow(1. - pfzw->target_value[index_f_gedf],2);
-      dxdy[index_f_gedf_2] = rho_no_gedf_2
-        / pow(1. - pfzw->target_value[index_f_gedf_2],2);
     }
   }
 
@@ -1771,9 +1684,6 @@ int input_try_unknown_parameters(double * unknown_parameter,
       break;
     case f_gedf:
       output[i] = ba.f_gedf-pfzw->target_value[i];
-      break;
-    case f_gedf_2:
-      output[i] = ba.f_gedf_2-pfzw->target_value[i];
       break;
     case sigma8:
       output[i] = fo.sigma8[fo.index_pk_m];
@@ -2650,6 +2560,7 @@ int input_read_parameters_species(struct file_content * pfc,
   double scf_lambda;
   double fnu_factor;
   double Omega_tot;
+  double dadb_Omega_custom, dadb_w, dadb_dw, dadb_int_1, dadb_int_c;
   double sigma_B; // Stefan-Boltzmann constant
   double stat_f_idr = 7./8.;
   double f_cdm=1., f_idm=0.;
@@ -3465,6 +3376,68 @@ int input_read_parameters_species(struct file_content * pfc,
   if (pba->Omega0_cdm < 0.)
     pba->Omega0_cdm = 0.;
 
+  /** 7.4) Phenomenological DADB-like split of the input total CDM. */
+  class_read_flag("dadb_like",pba->has_dadb);
+  class_read_flag("dadb_allow_negative_rho_X",pba->dadb_allow_negative_rho_X);
+  class_read_double("dadb_F_d",pba->dadb_F_d);
+  class_read_double("dadb_Delta_e",pba->dadb_Delta_e);
+  class_read_double("dadb_z_e",pba->dadb_z_e);
+  class_read_double("dadb_p_e",pba->dadb_p_e);
+  class_read_double("dadb_Delta_l",pba->dadb_Delta_l);
+  class_read_double("dadb_z_l",pba->dadb_z_l);
+  class_read_double("dadb_p_l",pba->dadb_p_l);
+  class_read_double("dadb_epsilon_X",pba->dadb_epsilon_X);
+  class_read_double("dadb_z_X",pba->dadb_z_X);
+  class_read_double("dadb_p_X",pba->dadb_p_X);
+  class_read_double("dadb_beta5",pba->dadb_beta5);
+  class_read_double("dadb_kC_hmpc",pba->dadb_kC_hmpc);
+  class_call(parser_read_string(pfc,"dadb_perturbation_mode",&string1,&flag1,errmsg),
+             errmsg,errmsg);
+  if (flag1 == _TRUE_) {
+    if (strcmp(string1,"drag_only") == 0) pba->dadb_mode = dadb_drag_only;
+    else if (strcmp(string1,"qs_yukawa") == 0) pba->dadb_mode = dadb_qs_yukawa;
+    else class_stop(errmsg,
+                    "dadb_perturbation_mode must be 'drag_only' or 'qs_yukawa', got '%s'.",
+                    string1);
+  }
+  class_test(!isfinite(pba->dadb_F_d) || pba->dadb_F_d < 0. || pba->dadb_F_d >= 1.,
+             errmsg,"dadb_F_d must satisfy 0 <= F_d < 1, got %g.",pba->dadb_F_d);
+  class_test(!isfinite(pba->dadb_p_e) || !isfinite(pba->dadb_p_l)
+             || !isfinite(pba->dadb_p_X) || !(pba->dadb_p_e > 0.)
+             || !(pba->dadb_p_l > 0.) || !(pba->dadb_p_X > 0.),
+             errmsg,"dadb_p_e, dadb_p_l and dadb_p_X must be finite and positive.");
+  class_test(!isfinite(pba->dadb_z_e) || !isfinite(pba->dadb_z_l)
+             || !isfinite(pba->dadb_z_X) || !(pba->dadb_z_e > -1.)
+             || !(pba->dadb_z_l > -1.) || !(pba->dadb_z_X > -1.),
+             errmsg,"DADB transition redshifts must be finite and greater than -1.");
+  class_test(!isfinite(pba->dadb_Delta_e) || !isfinite(pba->dadb_Delta_l)
+             || !isfinite(pba->dadb_epsilon_X) || !isfinite(pba->dadb_beta5)
+             || !isfinite(pba->dadb_kC_hmpc) || pba->dadb_beta5 < 0.
+             || !(pba->dadb_kC_hmpc > 0.),
+             errmsg,"DADB amplitudes must be finite, beta5 non-negative, and kC positive.");
+  class_test(fabs(pba->dadb_Delta_e)+fabs(pba->dadb_Delta_l) > 350.,
+             errmsg,"DADB log-mass amplitudes are too large to guarantee a finite positive M(a).");
+  class_test((pba->has_dadb == _TRUE_) && (ppt->gauge != synchronous),
+             errmsg,"The initial DADB-like implementation supports synchronous gauge only.");
+
+  pba->Omega0_cdm_tot = pba->Omega0_cdm;
+  if ((pba->has_dadb == _TRUE_) && (pba->dadb_F_d == 0.)) {
+    /* An exactly vanishing coupled population is an exact baseline limit. */
+    pba->has_dadb = _FALSE_;
+  }
+  if ((pba->has_dadb == _TRUE_)
+      && (pba->dadb_Delta_e == 0.)
+      && (pba->dadb_Delta_l == 0.)
+      && (pba->dadb_epsilon_X == 0.)) {
+    /* A constant-mass split plus w_X=-1 is exactly degenerate with the
+       original CDM+Lambda model; use that representation to machine precision. */
+    pba->has_dadb = _FALSE_;
+  }
+  if (pba->has_dadb == _TRUE_) {
+    pba->Omega0_dadb_d = pba->dadb_F_d*pba->Omega0_cdm_tot;
+    pba->Omega0_cdm = (1.-pba->dadb_F_d)*pba->Omega0_cdm_tot;
+  }
+
   /* avoid Omega0_cdm exactly zero in synchronous gauge */
   if ((ppt->gauge == synchronous) && (pba->Omega0_cdm < ppr->Omega0_cdm_min_synchronous)) {
     pba->Omega0_cdm = ppr->Omega0_cdm_min_synchronous;
@@ -3507,6 +3480,7 @@ int input_read_parameters_species(struct file_content * pfc,
   Omega_tot += pba->Omega0_b;
   Omega_tot += pba->Omega0_ur;
   Omega_tot += pba->Omega0_cdm;
+  Omega_tot += pba->Omega0_dadb_d;
   Omega_tot += pba->Omega0_idm;
   Omega_tot += pba->Omega0_dcdmdr;
   Omega_tot += pba->Omega0_idr;
@@ -3525,26 +3499,32 @@ int input_read_parameters_species(struct file_content * pfc,
     Omega_tot += pba->Omega0_scf;
   }
   /* Step 2 */
-  if (flag1 == _FALSE_) {
+  if ((flag1 == _FALSE_) && (pba->has_dadb == _FALSE_)) {
     /* Fill with Lambda */
     pba->Omega0_lambda= 1. - pba->Omega0_k - Omega_tot;
     if (input_verbose > 0){
       printf(" -> matched budget equations by adjusting Omega_Lambda = %g\n",pba->Omega0_lambda);
     }
   }
-  else if (flag2 == _FALSE_) {
+  else if ((flag2 == _FALSE_) && (pba->has_dadb == _FALSE_)) {
     /* Fill up with fluid */
     pba->Omega0_fld = 1. - pba->Omega0_k - Omega_tot;
     if (input_verbose > 0){
       printf(" -> matched budget equations by adjusting Omega_fld = %g\n",pba->Omega0_fld);
     }
   }
-  else if ((flag3 == _TRUE_) && (param3 < 0.)){
+  else if ((flag3 == _TRUE_) && (param3 < 0.) && (pba->has_dadb == _FALSE_)){
     /* Fill up with scalar field */
     pba->Omega0_scf = 1. - pba->Omega0_k - Omega_tot;
     if (input_verbose > 0){
       printf(" -> matched budget equations by adjusting Omega_scf = %g\n",pba->Omega0_scf);
     }
+  }
+
+  if (pba->has_dadb == _TRUE_) {
+    /* The physical X sector, not Lambda/fld, closes the present budget. */
+    if (flag1 == _FALSE_) pba->Omega0_lambda = 0.;
+    if (flag2 == _FALSE_) pba->Omega0_fld = 0.;
   }
 
   /* ** END OF BUDGET EQUATION ** */
@@ -3705,53 +3685,97 @@ int input_read_parameters_species(struct file_content * pfc,
   class_call(parser_read_double(pfc,"rho_gedf",&param1,&flag1,errmsg),
              errmsg,
              errmsg);
-  class_call(parser_read_double(pfc,"ac_gedf",&param2,&flag2,errmsg),
-             errmsg,
-             errmsg);
-  class_call(parser_read_double(pfc,"s_a_gedf",&param3,&flag3,errmsg),
-             errmsg,
-             errmsg);
   if (flag1 == _TRUE_)
     pba->rho_gedf = param1;
-  if (flag2 == _TRUE_)
-    pba->ac_gedf = param2;
-  if (flag3 == _TRUE_)
-    pba->s_a_gedf = param3;
-  class_call(parser_read_double(pfc,"wi_edf",&param1,&flag1,errmsg),
+  class_read_flag("use_exp_gedf",pba->use_exp_gedf);
+  class_read_flag("use_model_independent_gedf",pba->use_model_independent_gedf);
+  class_call(parser_read_double(pfc,"q_gedf",&param4,&flag4,errmsg),
              errmsg,
              errmsg);
-  class_call(parser_read_double(pfc,"wf_edf",&param2,&flag2,errmsg),
-             errmsg,
-             errmsg);
-  if (flag1 == _TRUE_)
-    pba->wi_edf = param1;
-  if (flag2 == _TRUE_)
-    pba->wf_edf = param2;
-  class_call(parser_read_double(pfc,"rho_gedf_2",&param1,&flag1,errmsg),
-             errmsg,
-             errmsg);
-  class_call(parser_read_double(pfc,"ac_gedf_2",&param2,&flag2,errmsg),
-             errmsg,
-             errmsg);
-  class_call(parser_read_double(pfc,"s_a_gedf_2",&param3,&flag3,errmsg),
-             errmsg,
-             errmsg);
-  class_call(parser_read_double(pfc,"wi_gedf_2",&param4,&flag4,errmsg),
-             errmsg,
-             errmsg);
-  if (flag1 == _TRUE_)
-    pba->rho_gedf_2 = param1;
-  if (flag2 == _TRUE_)
-    pba->ac_gedf_2 = param2;
-  if (flag3 == _TRUE_)
-    pba->s_a_gedf_2 = param3;
   if (flag4 == _TRUE_)
-    pba->wi_gedf_2 = param4;
-  class_call(parser_read_double(pfc,"wf_gedf_2",&param1,&flag1,errmsg),
+    pba->q_gedf = param4;
+  class_test(!(pba->q_gedf > 0.),
+             errmsg,
+             "'q_gedf' must be strictly positive, but you entered %g.",
+             pba->q_gedf);
+  class_call(parser_read_double(pfc,"w_1",&param1,&flag1,errmsg),
+             errmsg,
+             errmsg);
+  class_call(parser_read_double(pfc,"w_2",&param2,&flag2,errmsg),
              errmsg,
              errmsg);
   if (flag1 == _TRUE_)
-    pba->wf_gedf_2 = param1;
+    pba->w_1 = param1;
+  if (flag2 == _TRUE_)
+    pba->w_2 = param2;
+  class_call(parser_read_double(pfc,"w_3",&param3,&flag3,errmsg),
+             errmsg,
+             errmsg);
+  if (flag3 == _TRUE_)
+    pba->w_3 = param3;
+  class_call(parser_read_double(pfc,"z_12",&param1,&flag1,errmsg),
+             errmsg,
+             errmsg);
+  if (flag1 == _TRUE_)
+    pba->z_12 = param1;
+  class_call(parser_read_double(pfc,"z_23",&param2,&flag2,errmsg),
+             errmsg,
+             errmsg);
+  if (flag2 == _TRUE_)
+    pba->z_23 = param2;
+  class_test(!isfinite(pba->w_1) || !isfinite(pba->w_2) || !isfinite(pba->w_3),
+             errmsg,"GEDF w_1, w_2 and w_3 must be finite.");
+  class_test((pba->w_1 < -1.) || (pba->w_2 < -1.) || (pba->w_3 < -1.),
+             errmsg,"Three-bin GEDF fluid perturbations require w_1, w_2 and w_3 >= -1.");
+  class_test(!(pba->z_12 > pba->z_23) || (pba->z_23 < 0.),
+             errmsg,"GEDF transitions require z_12 > z_23 >= 0, got z_12=%g and z_23=%g.",
+             pba->z_12,pba->z_23);
+  pba->ac_gedf = 1./(1.+pba->z_12);
+  if (pba->use_model_independent_gedf == _TRUE_) {
+    int gedf_z_count, gedf_w_count, gedf_index;
+    class_call(parser_read_double(pfc,"wi_gedf",&param1,&flag1,errmsg),errmsg,errmsg);
+    if (flag1 == _TRUE_) pba->wi_gedf = param1;
+    class_call(parser_read_double(pfc,"wf_gedf",&param1,&flag1,errmsg),errmsg,errmsg);
+    if (flag1 == _TRUE_) pba->wf_gedf = param1;
+    class_call(parser_read_double(pfc,"zi_gedf",&param1,&flag1,errmsg),errmsg,errmsg);
+    if (flag1 == _TRUE_) pba->zi_gedf = param1;
+    class_call(parser_read_double(pfc,"zf_gedf",&param1,&flag1,errmsg),errmsg,errmsg);
+    if (flag1 == _TRUE_) pba->zf_gedf = param1;
+    class_call(parser_read_int(pfc,"gedf_node_count",&pba->gedf_node_count,&flag1,errmsg),errmsg,errmsg);
+    class_call(parser_read_double(pfc,"gedf_pchip_tension",&param1,&flag1,errmsg),errmsg,errmsg);
+    if (flag1 == _TRUE_) pba->gedf_pchip_tension = param1;
+    gedf_z_count = 0;
+    gedf_w_count = 0;
+    class_call(parser_read_list_of_doubles(pfc,"gedf_node_z",&gedf_z_count,
+                                           &pba->gedf_node_z,&flag1,errmsg),errmsg,errmsg);
+    class_call(parser_read_list_of_doubles(pfc,"gedf_node_w",&gedf_w_count,
+                                           &pba->gedf_node_w,&flag2,errmsg),errmsg,errmsg);
+    class_test(!isfinite(pba->wi_gedf) || !isfinite(pba->wf_gedf),errmsg,
+               "Reconstructed GEDF endpoint equations of state must be finite.");
+    class_test((pba->wi_gedf < -1.) || (pba->wf_gedf < -1.),errmsg,
+               "Reconstructed GEDF fluid requires wi_gedf and wf_gedf >= -1.");
+    class_test(!(pba->zi_gedf > pba->zf_gedf) || (pba->zf_gedf < 0.),errmsg,
+               "Reconstructed GEDF requires zi_gedf > zf_gedf >= 0.");
+    class_test(pba->gedf_node_count < 0,errmsg,"gedf_node_count must be non-negative.");
+    class_test((gedf_z_count != pba->gedf_node_count)
+               || (gedf_w_count != pba->gedf_node_count),errmsg,
+               "gedf_node_z and gedf_node_w must each contain gedf_node_count=%d entries (got %d and %d).",
+               pba->gedf_node_count,gedf_z_count,gedf_w_count);
+    class_test((pba->gedf_pchip_tension < 0.) || (pba->gedf_pchip_tension > 1.),errmsg,
+               "gedf_pchip_tension must lie in [0,1].");
+    for (gedf_index=0; gedf_index<pba->gedf_node_count; gedf_index++) {
+      class_test(!isfinite(pba->gedf_node_z[gedf_index])
+                 || !isfinite(pba->gedf_node_w[gedf_index]),errmsg,
+                 "All reconstructed GEDF node coordinates must be finite.");
+      class_test(pba->gedf_node_w[gedf_index] < -1.,errmsg,
+                 "Reconstructed GEDF fluid node w values must be >= -1.");
+      class_test((pba->gedf_node_z[gedf_index] >=
+                  ((gedf_index == 0) ? pba->zi_gedf : pba->gedf_node_z[gedf_index-1]))
+                 || (pba->gedf_node_z[gedf_index] <= pba->zf_gedf),errmsg,
+                 "gedf_node_z must be strictly descending between zi_gedf and zf_gedf.");
+    }
+    pba->ac_gedf = 1./(1.+pba->zi_gedf);
+  }
   class_call(parser_read_string(pfc,
                                   "has_gedf_perturbations",
                                   &string1,
@@ -3768,22 +3792,57 @@ int input_read_parameters_species(struct file_content * pfc,
         ppt->has_gedf_perturbations = _FALSE_;
       }
     }
-  class_call(parser_read_string(pfc,
-                                  "has_gedf_2_perturbations",
-                                  &string1,
-                                  &flag1,
-                                  errmsg),
-                errmsg,
-                errmsg);
-
-    if (flag1 == _TRUE_){
-      if((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL)){
-        ppt->has_gedf_2_perturbations = _TRUE_;
-      }
-      else{
-        ppt->has_gedf_2_perturbations = _FALSE_;
-      }
+  if ((pba->use_model_independent_gedf == _TRUE_)
+      && (ppt->has_gedf_perturbations == _TRUE_)) {
+    int gedf_index;
+    class_test((pba->wi_gedf <= -1.) || (pba->wf_gedf <= -1.),errmsg,
+               "Fluid perturbations for reconstructed GEDF require wi_gedf and wf_gedf > -1; use has_gedf_perturbations=no for an endpoint at w=-1.");
+    for (gedf_index=0; gedf_index<pba->gedf_node_count; gedf_index++)
+      class_test(pba->gedf_node_w[gedf_index] <= -1.,errmsg,
+                 "Fluid perturbations for reconstructed GEDF require all gedf_node_w values > -1.");
+  }
+  class_read_flag("set_const_cs2",ppt->set_const_cs2);
+  class_call(parser_read_double(pfc,"cs2_gedf",&param2,&flag2,errmsg),
+             errmsg,
+             errmsg);
+  if (flag2 == _TRUE_)
+    ppt->cs2_gedf = param2;
+  class_test((ppt->set_const_cs2 == _TRUE_) && (flag2 == _FALSE_),
+             errmsg,
+             "When 'set_const_cs2' is enabled, you must specify 'cs2_gedf'.");
+  class_test((ppt->set_const_cs2 == _TRUE_) && !isfinite(ppt->cs2_gedf),
+             errmsg,
+             "'cs2_gedf' must be finite, but you entered %g.",
+             ppt->cs2_gedf);
+  if (pba->has_dadb == _TRUE_) {
+    /* GEDF amplitudes are stored as CLASS densities rather than Omegas, so
+       add their actual a=1 densities before assigning the flatness residual
+       to physical rho_X. This leaves GEDF as an independent EDE component. */
+    dadb_Omega_custom = 0.;
+    if (pba->rho_edf != 0.) {
+      double dadb_ac = 1./(1.+pba->zc_edf);
+      dadb_Omega_custom += pba->rho_edf
+        *(log(2.*pow(dadb_ac,4.5))-log(1.+pow(dadb_ac,4.5)))
+        /pow(pba->H0,2);
     }
+    if (pba->rho_gedf != 0.) {
+      class_call(background_w_gedf(pba,1.,&dadb_w,&dadb_dw,&dadb_int_1),
+                 pba->error_message,errmsg);
+      class_call(background_w_gedf(pba,pba->ac_gedf,&dadb_w,&dadb_dw,&dadb_int_c),
+                 pba->error_message,errmsg);
+      dadb_Omega_custom += pba->rho_gedf*exp(dadb_int_1-dadb_int_c)
+        /pow(pba->H0,2);
+    }
+    pba->Omega0_dadb_X = 1.-pba->Omega0_k-Omega_tot-dadb_Omega_custom;
+    class_test(!isfinite(pba->Omega0_dadb_X)
+               || ((pba->Omega0_dadb_X < 0.)
+                   && (pba->dadb_allow_negative_rho_X == _FALSE_)),
+               errmsg,
+               "Flatness gives non-physical DADB rho_X(1): Omega_X=%g (custom EDE Omega=%g).",
+               pba->Omega0_dadb_X,dadb_Omega_custom);
+    if (input_verbose > 0)
+      printf(" -> matched budget equations with DADB Omega_X = %g\n",pba->Omega0_dadb_X);
+  }
 
   return _SUCCESS_;
 
@@ -6151,7 +6210,8 @@ int input_default_params(struct background *pba,
   /** 2) Perturbed recombination */
   ppt->has_perturbed_recombination=_FALSE_;
   ppt->has_gedf_perturbations = _FALSE_;
-  ppt->has_gedf_2_perturbations = _FALSE_;
+  ppt->set_const_cs2 = _FALSE_;
+  ppt->cs2_gedf = 1.;
   /** 3) Modes */
   ppt->has_scalars=_TRUE_;
   ppt->has_vectors=_FALSE_;
@@ -6246,6 +6306,24 @@ int input_default_params(struct background *pba,
 
   /** 4) CDM density */
   pba->Omega0_cdm = 0.1201075/pow(pba->h,2);
+  pba->Omega0_cdm_tot = pba->Omega0_cdm;
+  pba->Omega0_dadb_d = 0.;
+  pba->Omega0_dadb_X = 0.;
+  pba->has_dadb = _FALSE_;
+  pba->dadb_allow_negative_rho_X = _FALSE_;
+  pba->dadb_F_d = 0.30;
+  pba->dadb_Delta_e = 0.;
+  pba->dadb_z_e = 3500.;
+  pba->dadb_p_e = 6.;
+  pba->dadb_Delta_l = 0.080;
+  pba->dadb_z_l = 0.43;
+  pba->dadb_p_l = 6.;
+  pba->dadb_epsilon_X = 0.25;
+  pba->dadb_z_X = 0.08;
+  pba->dadb_p_X = 20.;
+  pba->dadb_mode = dadb_drag_only;
+  pba->dadb_beta5 = 0.50;
+  pba->dadb_kC_hmpc = 0.05;
 
   /** 5) ncdm sector */
   /** 5.a) Number of distinct species */
@@ -6344,16 +6422,25 @@ int input_default_params(struct background *pba,
   /** gedf default values*/
   pba->rho_gedf = 0.0;
   pba->f_gedf = 0.;
-  pba->s_a_gedf = 1000.;
   pba->ac_gedf = 1./3400.;
-  pba->rho_gedf_2 = 0.0;
-  pba->f_gedf_2 = 0.;
-  pba->s_a_gedf_2 = 1000.;
-  pba->ac_gedf_2 = 1./3400.;
+  pba->use_exp_gedf = _TRUE_;
+  pba->use_model_independent_gedf = _FALSE_;
+  pba->q_gedf = 10.;
+  pba->w_1 = -1.;
+  pba->w_2 = 1./3.;
+  pba->w_3 = 0.;
+  pba->z_12 = 5000.;
+  pba->z_23 = 1000.;
+  pba->wi_gedf = -0.9;
+  pba->wf_gedf = 0.;
+  pba->zi_gedf = 5000.;
+  pba->zf_gedf = 1000.;
+  pba->gedf_node_count = 0;
+  pba->gedf_node_z = NULL;
+  pba->gedf_node_w = NULL;
+  pba->gedf_pchip_tension = 0.;
   pba->wi_edf = -1.;
   pba->wf_edf = 0.5;
-  pba->wi_gedf_2 = -1.;
-  pba->wf_gedf_2 = 0.5;
   /** 9.b) Omega scalar field */
   /** 9.b.1) Potential parameters and initial conditions */
   pba->scf_parameters = NULL;

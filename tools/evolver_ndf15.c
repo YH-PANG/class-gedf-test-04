@@ -1237,17 +1237,17 @@ int numjac(
   for(j=1;j<=neq;j++){
     if (nj_ws->del[j]==0.0){
       for(;;){
-    if (fac[j] < facmax){
-      fac[j] = MIN(100*fac[j],facmax);
-      nj_ws->del[j] = (y[j] + fac[j]*nj_ws->yscale[j]) - y[j];
-      if(nj_ws->del[j]==0.0){
-        break;
-      }
-    }
-    else{
-      nj_ws->del[j] = thresh;
-      break;
-    }
+        if (fac[j] < facmax){
+          fac[j] = MIN(100*fac[j],facmax);
+          nj_ws->del[j] = (y[j] + fac[j]*nj_ws->yscale[j]) - y[j];
+          if(nj_ws->del[j]!=0.0){
+            break;
+          }
+        }
+        else{
+          nj_ws->del[j] = thresh;
+          break;
+        }
       }
     }
   }
@@ -1260,6 +1260,13 @@ int numjac(
     else{
       nj_ws->del[j] = -fabs(nj_ws->del[j]);
     }
+    class_test(!isfinite(nj_ws->del[j]) || (nj_ws->del[j] == 0.),
+               error_message,
+               "numjac generated an invalid finite-difference step at t=%g, column=%d (y=%g, del=%g).",
+               t,
+               j,
+               y[j],
+               nj_ws->del[j]);
   }
 
   /* Sparse calculation?*/
@@ -1319,12 +1326,24 @@ int numjac(
       group = jac->col_group[j];
       Fdiff_new = 0.0;
       Fdiff_absrm = 0.0;
+      nj_ws->Rowmax[j+1] = 1;
+      nj_ws->Difmax[j+1] = 0.;
       for(i=Ap[j];i<Ap[j+1];i++){
         /* Loop over rows in the sparse matrix */
         row = Ai[i]+1;
         /* Do I want to construct the full jacobian? No, that is ugly..*/
         Fdiff_absrm = MAX(Fdiff_absrm,fabs(Fdiff_new));
         Fdiff_new = nj_ws->ydel_Fdel[row][group+1]-fval[row]; /*Remember to access the column of the corresponding group */
+        class_test(!isfinite(Fdiff_new),
+                   error_message,
+                   "numjac received a non-finite derivative difference at t=%g, row=%d, column=%d (Fdel=%g, fval=%g, y=%g, del=%g).",
+                   t,
+                   row,
+                   j+1,
+                   nj_ws->ydel_Fdel[row][group+1],
+                   fval[row],
+                   y[j+1],
+                   nj_ws->del[j+1]);
         if (fabs(Fdiff_new)>=Fdiff_absrm){
           nj_ws->Rowmax[j+1] = row;
           nj_ws->Difmax[j+1] = Fdiff_new;
@@ -1341,9 +1360,21 @@ int numjac(
     for(j=1;j<=neq;j++){
       Fdiff_new = 0.0;
       Fdiff_absrm = 0.0;
+      nj_ws->Rowmax[j] = 1;
+      nj_ws->Difmax[j] = 0.;
       for(i=1;i<=neq;i++){
         Fdiff_absrm = MAX(fabs(Fdiff_new),Fdiff_absrm);
         Fdiff_new = nj_ws->ydel_Fdel[i][j] - fval[i];
+        class_test(!isfinite(Fdiff_new),
+                   error_message,
+                   "numjac received a non-finite derivative difference at t=%g, row=%d, column=%d (Fdel=%g, fval=%g, y=%g, del=%g).",
+                   t,
+                   i,
+                   j,
+                   nj_ws->ydel_Fdel[i][j],
+                   fval[i],
+                   y[j],
+                   nj_ws->del[j]);
         dFdy[i][j] = Fdiff_new/nj_ws->del[j];
         /*Find row maximums:*/
         if(fabs(Fdiff_new)>=Fdiff_absrm){

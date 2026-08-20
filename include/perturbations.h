@@ -105,7 +105,8 @@ struct perturbations
 
   short has_perturbations; /**< do we need to compute perturbations at all ? */
   short has_gedf_perturbations;
-  short has_gedf_2_perturbations;
+  short set_const_cs2; /**< use a constant rest-frame sound speed for GEDF */
+  double cs2_gedf;     /**< constant GEDF rest-frame sound speed when set_const_cs2 is enabled */
 
   short has_cls; /**< do we need any harmonic space spectrum \f$ C_l \f$ (and hence Bessel functions, transfer functions, ...)? */
 
@@ -251,7 +252,6 @@ struct perturbations
   short has_source_delta_fld;  /**< do we need source for delta of dark energy? */
   short has_source_delta_edf;  /**< by yehuang */
   short has_source_delta_gedf;
-  short has_source_delta_gedf_2;
   short has_source_delta_scf;  /**< do we need source for delta from scalar field? */
   short has_source_delta_dr;   /**< do we need source for delta of decay radiation? */
   short has_source_delta_ur;   /**< do we need source for delta of ultra-relativistic neutrinos/relics? */
@@ -270,8 +270,6 @@ struct perturbations
   short has_source_u_edf;
   short has_source_theta_gedf;
   short has_source_u_gedf;
-  short has_source_theta_gedf_2;
-  short has_source_u_gedf_2;
   short has_source_theta_scf;  /**< do we need source for theta of scalar field? */
   short has_source_theta_dr;   /**< do we need source for theta of ultra-relativistic neutrinos/relics? */
   short has_source_theta_ur;   /**< do we need source for theta of ultra-relativistic neutrinos/relics? */
@@ -307,7 +305,6 @@ struct perturbations
   int index_tp_delta_fld;  /**< index value for delta of dark energy */
   int index_tp_delta_edf;  /**< by yehuang */
   int index_tp_delta_gedf;
-  int index_tp_delta_gedf_2;
   int index_tp_delta_scf;  /**< index value for delta of scalar field */
   int index_tp_delta_dr; /**< index value for delta of decay radiation */
   int index_tp_delta_ur; /**< index value for delta of ultra-relativistic neutrinos/relics */
@@ -328,8 +325,6 @@ struct perturbations
   int index_tp_u_edf;
   int index_tp_theta_gedf;
   int index_tp_u_gedf;
-  int index_tp_theta_gedf_2;
-  int index_tp_u_gedf_2;
   int index_tp_theta_scf;   /**< index value for theta of scalar field */
   int index_tp_theta_ur;    /**< index value for theta of ultra-relativistic neutrinos/relics */
   int index_tp_theta_idr;   /**< index value for theta of interacting dark radiation */
@@ -493,6 +488,8 @@ struct perturbations_vector
   int index_pt_theta_b;   /**< baryon velocity */
   int index_pt_delta_cdm; /**< cdm density */
   int index_pt_theta_cdm; /**< cdm velocity */
+  int index_pt_delta_dadb; /**< coupled varying-mass CDM density contrast */
+  int index_pt_theta_dadb; /**< coupled varying-mass CDM velocity divergence */
   int index_pt_delta_idm; /**< idm density */
   int index_pt_theta_idm; /**< idm velocity */
   int index_pt_delta_dcdm; /**< dcdm density */
@@ -509,9 +506,6 @@ struct perturbations_vector
   int index_pt_delta_gedf;  
   int index_pt_theta_gedf;
   int index_pt_u_gedf;  
-  int index_pt_delta_gedf_2;
-  int index_pt_theta_gedf_2;
-  int index_pt_u_gedf_2;
   int index_pt_phi_scf;  /**< scalar field density */
   int index_pt_phi_prime_scf;  /**< scalar field velocity */
   int index_pt_delta_ur; /**< density of ultra-relativistic neutrinos/relics */
@@ -657,14 +651,6 @@ struct perturbations_workspace
   double cs2_gedf_output;
   double u_gedf;
   double T_h_gedf;
-  double delta_rho_gedf_2;
-  double delta_p_gedf_2;
-  double rho_plus_p_theta_gedf_2;
-  double delta_gedf_2;
-  double ca2_gedf_2_output;
-  double cs2_gedf_2_output;
-  double u_gedf_2;
-  double T_h_gedf_2;
 
   FILE * perturbations_output_file; /**< filepointer to output file*/
   int index_ikout;            /**< index for output k value (when k_output_values is set) */

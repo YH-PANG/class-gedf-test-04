@@ -14,6 +14,9 @@
 
 enum equation_of_state {CLP,EDE};
 
+/** Phenomenological closure used for perturbations of the DADB-like species. */
+enum dadb_perturbation_mode {dadb_drag_only,dadb_qs_yukawa};
+
 
 /** list of possible parametrizations of the varying fundamental constants */
 
@@ -66,6 +69,27 @@ struct background
   double Omega0_ur; /**< \f$ \Omega_{0 \nu r} \f$: ultra-relativistic neutrinos */
 
   double Omega0_cdm;      /**< \f$ \Omega_{0 cdm} \f$: cold dark matter */
+
+  /* DADB-like interacting dark sector. omega_cdm/Omega_cdm is interpreted
+     as Omega0_cdm_tot at input and split into the two entries below. */
+  short has_dadb;
+  short dadb_allow_negative_rho_X;
+  double Omega0_cdm_tot;
+  double Omega0_dadb_d;
+  double Omega0_dadb_X;
+  double dadb_F_d;
+  double dadb_Delta_e;
+  double dadb_z_e;
+  double dadb_p_e;
+  double dadb_Delta_l;
+  double dadb_z_l;
+  double dadb_p_l;
+  double dadb_epsilon_X;
+  double dadb_z_X;
+  double dadb_p_X;
+  enum dadb_perturbation_mode dadb_mode;
+  double dadb_beta5;
+  double dadb_kC_hmpc;
 
   double Omega0_idm; /**< \f$ \Omega_{0 idm} \f$: interacting dark matter with photons, baryons, and idr */
 
@@ -125,16 +149,24 @@ struct background
   double omega_axion;
   double rho_gedf;
   double ac_gedf;
-  double s_a_gedf;
+  short use_exp_gedf;
+  short use_model_independent_gedf;
+  double q_gedf;
+  double w_1;
+  double w_2;
+  double w_3;
+  double z_12;
+  double z_23;
+  double wi_gedf;
+  double wf_gedf;
+  double zi_gedf;
+  double zf_gedf;
+  int gedf_node_count;
+  double * gedf_node_z;
+  double * gedf_node_w;
+  double gedf_pchip_tension;
   double ca2_i_gedf;
   double ca2_f_gedf;
-  double rho_gedf_2;
-  double ac_gedf_2;
-  double s_a_gedf_2;
-  double wi_gedf_2;
-  double wf_gedf_2;
-  double ca2_i_gedf_2;
-  double ca2_f_gedf_2;
   double Omega_EDE;        /**< \f$ wa_{DE} \f$: Early Dark Energy density parameter */
   double * scf_parameters; /**< list of parameters describing the scalar field potential */
   short attractor_ic_scf;  /**< whether the scalar field has attractor initial conditions */
@@ -171,7 +203,6 @@ struct background
   double tau_eq;    /**< conformal time at radiation/matter equality [Mpc] */
   double f_edf;
   double f_gedf;
-  double f_gedf_2;
 
   //@}
 
@@ -191,6 +222,14 @@ struct background
   int index_bg_rho_g;         /**< photon density */
   int index_bg_rho_b;         /**< baryon density */
   int index_bg_rho_cdm;       /**< cdm density */
+  int index_bg_dadb_M;        /**< DADB mass ratio M(a) */
+  int index_bg_dadb_q;        /**< d ln M / d ln a */
+  int index_bg_dadb_w_X;      /**< intrinsic X equation of state */
+  int index_bg_rho_dadb_u;    /**< uncoupled CDM density */
+  int index_bg_rho_dadb_d;    /**< coupled varying-mass CDM density */
+  int index_bg_rho_dadb_X;    /**< physical intrinsic-DE density */
+  int index_bg_rho_dadb_eff;  /**< constant-mass effective DE density */
+  int index_bg_dadb_w_eff;    /**< effective diagnostic equation of state */
   int index_bg_rho_idm;       /**< idm density */
   int index_bg_rho_lambda;    /**< cosmological constant density */
   int index_bg_rho_fld;       /**< fluid density */
@@ -199,8 +238,6 @@ struct background
   int index_bg_w_edf;         /**< EDF equation of state by yehuang */
   int index_bg_rho_gedf;      /**< GEDF density by yehuang*/
   int index_bg_w_gedf;        /**< GEDF equation of state by yehuang*/
-  int index_bg_rho_gedf_2;    /**< second GEDF density */
-  int index_bg_w_gedf_2;      /**< second GEDF equation of state */
   int index_bg_rho_idr;       /**< density of interacting dark radiation */
   int index_bg_rho_ur;        /**< relativistic neutrinos/relics density */
   int index_bg_rho_dcdm;      /**< dcdm density */
@@ -291,7 +328,7 @@ struct background
   int index_bi_rho_fld; /**< {B} fluid density */
   int index_bi_rho_edf; /**< {B} edf density */
   int index_bi_rho_gedf;/**< {B} gedf density */
-  int index_bi_rho_gedf_2;/**< {B} second gedf density */
+  int index_bi_rho_dadb_X;/**< {B} physical intrinsic DADB DE density */
   int index_bi_phi_scf;       /**< {B} scalar field value */
   int index_bi_phi_prime_scf; /**< {B} scalar field derivative wrt conformal time */
 
@@ -326,7 +363,7 @@ struct background
   short has_fld;       /**< presence of fluid with constant w and cs2? */
   short has_edf;       /**< presence of early dark fluid? by yehuang*/
   short has_gedf;      /**< presence of gedf by yehuang*/
-  short has_gedf_2;    /**< presence of second gedf */
+  short has_dadb_d;    /**< presence of coupled varying-mass CDM */
   short has_ur;        /**< presence of ultra-relativistic neutrinos/relics? */
   short has_idr;       /**< presence of interacting dark radiation? */
   short has_curvature; /**< presence of global spatial curvature? */
@@ -476,13 +513,14 @@ extern "C" {
                      double * integral_gedf
                      );
 
-  int background_w_gedf_2(
-                     struct background * pba,
-                     double a,
-                     double * w_gedf,
-                     double * dw_over_da_gedf,
-                     double * integral_gedf
-                     );
+  int background_dadb_functions(
+                                struct background * pba,
+                                double a,
+                                double * M,
+                                double * q,
+                                double * w_X,
+                                double * dw_X_over_da
+                                );
 
   int background_varconst_of_z(
                                struct background* pba,

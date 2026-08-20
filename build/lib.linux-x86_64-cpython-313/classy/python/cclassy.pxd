@@ -101,15 +101,17 @@ cdef extern from "class.h":
         double rho_edf
         double f_edf
         double f_gedf
-        double f_gedf_2
         double cs2_edf
         double Theta_i_edf
         double rho_gedf
         double ac_gedf
-        double s_a_gedf
-        double rho_gedf_2
-        double ac_gedf_2
-        double s_a_gedf_2
+        short use_exp_gedf
+        double q_gedf
+        double w_1
+        double w_2
+        double w_3
+        double z_12
+        double z_23
         double Omega0_ur
         double Omega0_dcdmdr
         double Omega0_dr
@@ -164,6 +166,8 @@ cdef extern from "class.h":
     cdef struct perturbations:
         short is_allocated
         ErrorMsg error_message
+        short set_const_cs2
+        double cs2_gedf
         short has_scalars
         short has_vectors
         short has_tensors

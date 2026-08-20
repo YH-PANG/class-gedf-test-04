@@ -14,7 +14,7 @@ GCCPATH_STRING = sbp.Popen(
     stdout=sbp.PIPE).communicate()[0]
 GCCPATH = osp.normpath(osp.dirname(GCCPATH_STRING)).decode()
 
-liblist = ["class"]
+liblist = ["class", "gsl", "gslcblas"]
 MVEC_STRING = sbp.Popen(
     ['gcc', '-lmvec'],
     stderr=sbp.PIPE).communicate()[1]
