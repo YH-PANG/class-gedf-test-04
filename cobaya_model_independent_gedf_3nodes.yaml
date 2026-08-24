@@ -1,0 +1,64 @@
+# Merge this fragment into the Cobaya run configuration containing the
+# likelihoods and the remaining cosmological parameters.
+theory:
+  classy:
+    path: /home/lutein/Projects/class-gedf-test-04
+    extra_args:
+      use_model_independent_gedf: 'yes'
+      wi_gedf: -0.9
+      wf_gedf: 0.0
+      zi_gedf: 5000.0
+      zf_gedf: 500.0
+      gedf_node_count: 3
+      gedf_node_z: 3000.0, 1800.0, 900.0
+      gedf_pchip_tension: 0.0
+      has_gedf_perturbations: 'yes'
+      set_const_cs2: 'yes'
+      cs2_gedf: 1.0
+
+params:
+  # Sampled node values. "drop" prevents the individual names from being
+  # sent to CLASS; only the packed gedf_node_w parameter below is sent.
+  gedf_node_w_1:
+    prior:
+      min: -0.99
+      max: 1.0
+    ref:
+      dist: norm
+      loc: -0.2
+      scale: 0.1
+    proposal: 0.05
+    drop: true
+    latex: w_{\mathrm{GEDF},1}
+
+  gedf_node_w_2:
+    prior:
+      min: -0.99
+      max: 1.0
+    ref:
+      dist: norm
+      loc: 0.3333333333333333
+      scale: 0.1
+    proposal: 0.05
+    drop: true
+    latex: w_{\mathrm{GEDF},2}
+
+  gedf_node_w_3:
+    prior:
+      min: -0.99
+      max: 1.0
+    ref:
+      dist: norm
+      loc: 0.1
+      scale: 0.1
+    proposal: 0.05
+    drop: true
+    latex: w_{\mathrm{GEDF},3}
+
+  # CLASS's list parser expects a comma-separated value.
+  gedf_node_w:
+    value: >-
+      lambda gedf_node_w_1, gedf_node_w_2, gedf_node_w_3:
+      '{:.17g},{:.17g},{:.17g}'.format(
+      gedf_node_w_1, gedf_node_w_2, gedf_node_w_3)
+    derived: false
